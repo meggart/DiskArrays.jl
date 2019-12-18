@@ -5,7 +5,23 @@ Abstract DiskArray type that can be inherited by Array-like data structures that
 have a significant random access overhead and whose access pattern follows
 n-dimensional (hyper)-rectangles.
 """
-abstract type AbstractDiskArray end
+abstract type AbstractDiskArray{T,N} end
+
+"""
+    readblock!(A::AbstractDiskArray, A_ret, r::AbstractUnitRange...)
+
+The only function that should be implemented by a `AbstractDiskArray`. This function
+"""
+function readblock!() end
+Base.ndims(::AbstractDiskArray{<:Any,N}) where N = N
+Base.eltype(::AbstractDiskArray{T}) where T = T
+
+function Base.getindex(a::AbstractDiskArray,i...)
+  inds, trans = interpret_indices_disk(a,i)
+  data = Array{eltype(a)}(undef, map(length,inds)...)
+  readblock!(a,data,inds...)
+  trans(data)
+end
 
 """
 Function that translates a list of user-supplied indices into plain ranges and
@@ -30,6 +46,7 @@ function interpret_indices_disk(A, r::Tuple{Colon})
   return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
 end
 
+
 function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractUnitRange, Colon}}) where N
   if ndims(A)==N
     inds = map(_convert_index,r,size(A))
@@ -47,7 +64,7 @@ function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractUnitRange
   end
 end
 
-function interpret_indices_disk(A, r::NTuple{<:AbstractArray{Bool, N}}) where N
+function interpret_indices_disk(A, r::Tuple{AbstractArray{<:Bool}})
   ba = r[1]
   if ndims(A)==ndims(ba)
     inds = getbb(ba)
@@ -68,18 +85,18 @@ end
 struct DimsDropper{D}
   d::D
 end
-(d::DimsDropper)(a) = dropdims(a,dims=d.d)
+(d::DimsDropper)(a) = length(d.d)==ndims(a) ? a[1] : dropdims(a,dims=d.d)
 struct TransformStack{S}
   s::S
 end
 (s::TransformStack)(a) = ∘(s.s...)(a)
 
 function getbb(ar::AbstractArray{Bool})
-  maxval = CartesianIndex(size(ii))
-  minval = CartesianIndex{ndims(ii)}()
+  maxval = CartesianIndex(size(ar))
+  minval = CartesianIndex{ndims(ar)}()
   reduceop = (i1,i2)->begin i2===nothing ? i1 : (min(i1[1],i2),max(i1[2],i2)) end
   mi,ma = mapfoldl(reduceop,
-    zip(CartesianIndices(ii),ii),
+    zip(CartesianIndices(ar),ar),
     init = (maxval,minval)) do ii
     ind,val = ii
     val ? ind : nothing

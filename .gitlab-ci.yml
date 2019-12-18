@@ -1,0 +1,22 @@
+image: julia:1.1                # image comes from Docker hub
+
+before_script:
+  - julia --project=@. -e "import Pkg; Pkg.build()"
+
+default:
+  script:
+    - julia --project=@. -e "import Pkg; Pkg.test(; coverage = true)"
+    - julia --project=test/coverage -e 'import Pkg; Pkg.instantiate()'
+    - julia --project=test/coverage test/coverage/coverage-summary.jl
+
+pages:
+  stage: deploy
+  script:
+    - julia --project=docs -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
+    - julia --project=docs --color=yes docs/make.jl
+    - mv docs/build public # move to the directory picked up by Gitlab pages
+  artifacts:
+    paths:
+      - public
+  only:
+  - master

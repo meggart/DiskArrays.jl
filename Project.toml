@@ -1,0 +1,15 @@
+name = "DiskArrays"
+uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
+authors = ["Fabian Gans <fgans@bgc-jena.mpg.de>"]
+version = "0.1.0"
+
+[deps]
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
+
+[compat]
+julia = "^1"

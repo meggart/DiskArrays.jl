@@ -1,4 +1,5 @@
 module DiskArrays
+export AbstractDiskArray, interpret_indices_disk
 
 """
 Abstract DiskArray type that can be inherited by Array-like data structures that

@@ -20,7 +20,7 @@ end
   Base.size(s::RangeArray,i) = s.s[i]
   RangeArray(s...) = RangeArray(s)
   function DiskArrays.readblock!(r::RangeArray, aout, inds::AbstractUnitRange...)
-    ndims(r) == length(inds) || error("This should never happen")
+    ndims(r) == length(inds) || error("This will never happen")
     aout .= sum.(Iterators.product(inds...))
   end
   a = RangeArray(4,5,1)

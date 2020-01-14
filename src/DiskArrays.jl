@@ -6,7 +6,7 @@ Abstract DiskArray type that can be inherited by Array-like data structures that
 have a significant random access overhead and whose access pattern follows
 n-dimensional (hyper)-rectangles.
 """
-abstract type AbstractDiskArray{T,N} end
+abstract type AbstractDiskArray{T,N} <: AbstractArray{T,N} end
 
 """
     readblock!(A::AbstractDiskArray, A_ret, r::AbstractUnitRange...)
@@ -14,6 +14,15 @@ abstract type AbstractDiskArray{T,N} end
 The only function that should be implemented by a `AbstractDiskArray`. This function
 """
 function readblock!() end
+
+"""
+    writeblock!(A::AbstractDiskArray, A_in, r::AbstractUnitRange...)
+
+Function that should be implemented by a `AbstractDiskArray` if write operations
+should be supported as well.
+"""
+function writeblock!() end
+
 Base.ndims(::AbstractDiskArray{<:Any,N}) where N = N
 Base.eltype(::AbstractDiskArray{T}) where T = T
 
@@ -22,6 +31,28 @@ function Base.getindex(a::AbstractDiskArray,i...)
   data = Array{eltype(a)}(undef, map(length,inds)...)
   readblock!(a,data,inds...)
   trans(data)
+end
+
+function Base.setindex!(a::AbstractDiskArray,v::AbstractArray,i...)
+  inds, trans = interpret_indices_disk(a,i)
+  data = reshape(v,map(length,inds))
+  writeblock!(a,data,inds...)
+  v
+end
+
+Base.setindex!(a::AbstractDiskArray{<:Any,N}, v, i...) where N =
+  Base.setindex!(a,fill(v,ntuple(i->1,N)...), i...)
+
+#Special care must be taken for logical indexing, we can not avoid reading the data
+#before writing
+function Base.setindex!(a::AbstractDiskArray,v::AbstractArray,i::AbstractArray{<:Bool})
+  inds, trans = interpret_indices_disk(a,i)
+  data = Array{eltype(a)}(undef, map(length,inds)...)
+  readblock!(a,data,inds...)
+
+  data = reshape(v,map(length,inds))
+  writeblock!(a,data,inds...)
+  v
 end
 
 """
@@ -38,12 +69,12 @@ The function returns two values:
   2. A callable object which transforms the hyperrectangle read from disk to
   the actual shape that represents the Base getindex behavior.
 """
-function interpret_indices_disk(A, r::Tuple)
+function interpret_indices_disk(A, r::Tuple, write = false)
   throw(ArgumentError("Indices of type $(typeof(r)) are not yet "))
 end
 
 #Read the entire array and reshape to 1D in the end
-function interpret_indices_disk(A, r::Tuple{Colon})
+function interpret_indices_disk(A, r::Tuple{Colon}, write = false)
   return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
 end
 
@@ -125,6 +156,8 @@ _convert_index(i::Integer, s::Int) = i:i
 _convert_index(i::AbstractUnitRange, s::Int) = i
 _convert_index(::Colon, s::Int) = Base.OneTo(s)
 
-
+function show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
+  println(io, "Disk Array with size ", join(size(X)," x "))
+end
 
 end # module

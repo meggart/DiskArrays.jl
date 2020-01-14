@@ -167,4 +167,6 @@ function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
 end
 
 include("subarrays.jl")
+include("chunks.jl")
+include("ops.jl")
 end # module

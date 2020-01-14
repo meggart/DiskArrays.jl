@@ -13,9 +13,12 @@ This package is an attempt to collect utilities for working with n-dimensional a
 structures that do not have considerable overhead for single read operations. Most important
 examples are arrays that represent data on hard disk that are accessed through a C
 library or that are compressed in chunks. It can be inadvisable to make these arrays a subtype
-of `AbstractArray` many functions working with ABstractArrays assume fast random access into single
-values (including basic things like `getindex`, `show`, `reduce`, etc...)
+of `AbstractArray` many functions working with AbstractArrays assume fast random access into single
+values (including basic things like `getindex`, `show`, `reduce`, etc...). Currently supported features are:
 
+  - `getindex`/`setindex` with the same rules as base (trailing or singleton dimensions etc)
+  - views into `DiskArrays`
+  - a fallback `Base.show` method that does not call getindex repeatedly 
 
 There are basically two ways to use this package.
 Either one makes the abstraction directly a subtype of `AbstractDiskArray` which requires

@@ -158,9 +158,9 @@ _findints(c, i, x::Integer, rest...) = _findints((c..., i), i+1, rest...)
 _findints(c, i, x, rest...) = _findints(c, i+1, rest...)
 _findints(c, i)  = c
 #Normal indexing for a full subset of an array
-_convert_index(i::Integer, s::Int) = i:i
-_convert_index(i::AbstractUnitRange, s::Int) = i
-_convert_index(::Colon, s::Int) = Base.OneTo(s)
+_convert_index(i::Integer, s::Integer) = i:i
+_convert_index(i::AbstractUnitRange, s::Integer) = i
+_convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 
 function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
   println(io, "Disk Array with size ", join(size(X)," x "))

@@ -1,6 +1,6 @@
 toRanges(r::Tuple) = r
 toRanges(r::CartesianIndices) = r.indices
-function Base.mapreduce(f,op,v::AbstractDiskArray)
+function Base._mapreduce(f,op,v::AbstractDiskArray)
   mapreduce(op,eachchunk(v)) do cI
     a = v[toRanges(cI)...]
     mapreduce(f,op,a)
@@ -15,4 +15,24 @@ function Base.mapreducedim!(f, op, R::AbstractArray, A::AbstractDiskArray)
     Base.mapreducedim!(f,op,view(R,ainds...),a)
   end
   R
+end
+
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::AbstractDiskArray)
+  cc = eachchunk(itr)
+  isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
+  Base.mapfoldl_impl(f,op,nt,itr,cc)
+end
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::AbstractDiskArray, cc)
+    y = first(cc)
+    a = itr[toRanges(y)...]
+    init = mapfoldl(f,op,a)
+    Base.mapfoldl_impl(f,op,(init=init,),itr,Iterators.drop(cc,1))
+end
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::AbstractDiskArray, cc)
+  init = nt.init
+  for y in cc
+    a = itr[toRanges(y)...]
+    init = mapfoldl(f,op,a,init=init)
+  end
+  init
 end

@@ -4,7 +4,6 @@ authors = ["Fabian Gans <fgans@bgc-jena.mpg.de>"]
 version = "0.1.0"
 
 [deps]
-ChunkedArrayBase = "816d2fc6-9f13-11e9-18ca-dfb085bbf819"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

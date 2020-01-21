@@ -75,14 +75,22 @@ The function returns two values:
   2. A callable object which transforms the hyperrectangle read from disk to
   the actual shape that represents the Base getindex behavior.
 """
-function interpret_indices_disk(A, r::Tuple, write = false)
+function interpret_indices_disk(A, r::Tuple)
   throw(ArgumentError("Indices of type $(typeof(r)) are not yet "))
 end
 
 #Read the entire array and reshape to 1D in the end
-function interpret_indices_disk(A, r::Tuple{Colon}, write = false)
+function interpret_indices_disk(A, r::Tuple{Colon})
   return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
 end
+
+interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) =
+  interpret_indices_disk(A,r[1].I)
+
+interpret_indices_disk(A, r::Tuple{<:CartesianIndices}) =
+  interpret_indices_disk(A,r[1].indices)
+
+
 
 
 function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractUnitRange, Colon}}) where N

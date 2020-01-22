@@ -51,6 +51,7 @@ function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
     ar = [bc[i] for i in CartesianIndices(c)]
     dest[toRanges(c)...] = ar
   end
+  dest
 end
 
 #This is a heavily allocating implementation, but working for all cases.
@@ -62,6 +63,7 @@ function Base.fill!(dest::$t, value)
     ar = fill(value,length.(toRanges(c)))
     dest[toRanges(c)...] = ar
   end
+  dest
 end
 end
 end

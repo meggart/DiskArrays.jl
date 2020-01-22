@@ -70,6 +70,9 @@ function DiskArrays.writeblock!(a::PseudoDiskArray,v,i...)
 end
 a = RangeArray(4,5,1)
 ````
+````
+Disk Array with size 10 x 9 x 1
+````
 
 Now all the Base indexing behaviors work for our array, while minimizing the
 number of reads that have to be done:

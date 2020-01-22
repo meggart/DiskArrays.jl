@@ -36,3 +36,24 @@ function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::AbstractDiskAr
   end
   init
 end
+
+import Base.Broadcast: Broadcasted
+
+#Broadcasting with a DiskArray on LHS
+function Base.copyto!(dest::AbstractDiskArray, bc::Broadcasted{Nothing})
+  foreach(eachchunk(dest)) do c
+    ar = [bc[i] for i in CartesianIndices(c)]
+    dest[toRanges(c)...] = ar
+  end
+end
+
+#This is a heavily allocating implementation, but working for all cases.
+#As performance optimization one might:
+#Allocate the array only once if all chunks have the same size
+#Use FillArrays, if the DiskArray accepts these
+function Base.fill!(dest::AbstractDiskArray, value)
+  foreach(eachchunk(dest)) do c
+    ar = fill(value,length.(toRanges(c)))
+    dest[toRanges(c)...] = ar
+  end
+end

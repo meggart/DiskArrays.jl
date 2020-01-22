@@ -45,18 +45,22 @@ const default_chunk_size = Ref(100)
 #Here we implement a fallback chunking for a DiskArray although this should normally
 #be over-ridden by the package that implements the interface
 
-function eachchunk(a::AbstractDiskArray)
+function eachchunk(a::AbstractArray)
   cs = estimate_chunksize(a)
   GridChunks(a,cs)
 end
 
-function estimate_chunksize(a::AbstractDiskArray)
-  s = size(a)
-  si = sizeof(eltype(a))
+struct Chunked end
+struct Unchunked end
+function haschunks end
+haschunks(x) = Unchunked()
+
+estimate_chunksize(a::AbstractDiskArray) = estimate_chunksize(size(a), sizeof(eltype(a)))
+function estimate_chunksize(s, si)
   ii = searchsortedfirst(cumprod(collect(s)),default_chunk_size[]*1e6/si)
-  ntuple(ndims(a)) do idim
+  ntuple(length(s)) do idim
     if idim<ii
-      return size(a,idim)
+      return s[idim]
     elseif idim>ii
       return 1
     else

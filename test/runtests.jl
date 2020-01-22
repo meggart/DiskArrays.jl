@@ -6,9 +6,11 @@ struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
   getindex_count::Ref{Int}
   setindex_count::Ref{Int}
   parent::A
+  chunksize::NTuple{N,Int}
 end
-_DiskArray(a) = _DiskArray(Ref(0),Ref(0),a)
+_DiskArray(a;chunksize=size(a)) = _DiskArray(Ref(0),Ref(0),a,chunksize)
 Base.size(a::_DiskArray) = size(a.parent)
+DiskArrays.eachchunk(a::_DiskArray) = DiskArrays.GridChunks(a,a.chunksize)
 function DiskArrays.readblock!(a::_DiskArray,aout,i...)
   ndims(a) == length(i) || error("Number of indices is not correct")
   all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
@@ -81,4 +83,26 @@ v[1:2,2:3] = [4 4; 4 4]
 @test a.parent[2:3,3:4] == [4 4; 4 4]
 @test a.getindex_count[] == 2
 @test a.setindex_count[] == 2
+end
+
+import Statistics: mean
+@testset "Reductions" begin
+  data = rand(10,20,2)
+  for f in (minimum,maximum,sum,
+            (i,args...;kwargs...)->all(j->j>0.1,i,args...;kwargs...),
+            (i,args...;kwargs...)->any(j->j<0.1,i,args...;kwargs...),
+            (i,args...;kwargs...)->mapreduce(x->2*x,+,i,args...;kwargs...))
+    a = _DiskArray(data,chunksize=(5,4,2))
+    @test isapprox(f(a),f(data))
+    @test a.getindex_count[] <= 10
+    #And test reduction along dimensions
+    a = _DiskArray(data,chunksize=(5,4,2))
+    @test all(isapprox.(f(a,dims=2),f(data,dims=2)))
+    #The minimum and maximum functions do some initialization, which will increase
+    #the number of reads
+    @test f in (minimum, maximum) || a.getindex_count[] <= 12
+    a = _DiskArray(data,chunksize=(5,4,2))
+    @test all(isapprox.(f(a,dims=(1,3)),f(data,dims=(1,3))))
+    @test f in (minimum, maximum) || a.getindex_count[] <= 12
+  end
 end

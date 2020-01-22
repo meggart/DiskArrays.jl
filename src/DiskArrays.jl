@@ -26,9 +26,7 @@ function writeblock!() end
 Base.ndims(::AbstractDiskArray{<:Any,N}) where N = N
 Base.eltype(::AbstractDiskArray{T}) where T = T
 
-function Base.getindex(a::AbstractDiskArray,i...)
-  getindex_disk(a,i...)
-end
+
 
 function getindex_disk(a, i...)
   inds, trans = interpret_indices_disk(a,i)
@@ -38,24 +36,6 @@ function getindex_disk(a, i...)
 end
 function setindex_disk!(a::AbstractDiskArray,v::AbstractArray,i...)
   inds, trans = interpret_indices_disk(a,i)
-  data = reshape(v,map(length,inds))
-  writeblock!(a,data,inds...)
-  v
-end
-Base.setindex!(a::AbstractDiskArray,v::AbstractArray,i...) =
-  setindex_disk!(a,v,i...)
-
-# Add an extra method if a single number is given
-Base.setindex!(a::AbstractDiskArray{<:Any,N}, v, i...) where N =
-  Base.setindex!(a,fill(v,ntuple(i->1,N)...), i...)
-
-#Special care must be taken for logical indexing, we can not avoid reading the data
-#before writing
-function Base.setindex!(a::AbstractDiskArray,v::AbstractArray,i::AbstractArray{<:Bool})
-  inds, trans = interpret_indices_disk(a,(i,))
-  data = Array{eltype(a)}(undef, map(length,inds)...)
-  readblock!(a,data,inds...)
-
   data = reshape(v,map(length,inds))
   writeblock!(a,data,inds...)
   v
@@ -170,11 +150,56 @@ _convert_index(i::Integer, s::Integer) = i:i
 _convert_index(i::AbstractUnitRange, s::Integer) = i
 _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 
+macro implement_getindex(t)
+quote
+function Base.getindex(a::$t,i...)
+  getindex_disk(a,i...)
+end
+end
+end
+
+macro implement_setindex(t)
+quote
+Base.setindex!(a::$t,v::AbstractArray,i...) =
+  setindex_disk!(a,v,i...)
+
+# Add an extra method if a single number is given
+Base.setindex!(a::$t{<:Any,N}, v, i...) where N =
+  Base.setindex!(a,fill(v,ntuple(i->1,N)...), i...)
+
+#Special care must be taken for logical indexing, we can not avoid reading the data
+#before writing
+function Base.setindex!(a::$t,v::AbstractArray,i::AbstractArray{<:Bool})
+  inds, trans = interpret_indices_disk(a,(i,))
+  data = Array{eltype(a)}(undef, map(length,inds)...)
+  readblock!(a,data,inds...)
+
+  data = reshape(v,map(length,inds))
+  writeblock!(a,data,inds...)
+  v
+end
+end
+end
+
 function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
   println(io, "Disk Array with size ", join(size(X)," x "))
 end
 
-include("subarrays.jl")
 include("chunks.jl")
 include("ops.jl")
+include("iterator.jl")
+include("subarrays.jl")
+
+#The all-in-one macro
+macro implement_diskarray(t)
+quote
+  @implement_getindex $t
+  @implement_setindex $t
+  @implement_broadcast $t
+  @implement_iteration $t
+  @implement_mapreduce $t
+end
+end
+
+@implement_diskarray AbstractDiskArray
 end # module

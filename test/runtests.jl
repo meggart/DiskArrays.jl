@@ -93,6 +93,7 @@ import Statistics: mean
             (i,args...;kwargs...)->any(j->j<0.1,i,args...;kwargs...),
             (i,args...;kwargs...)->mapreduce(x->2*x,+,i,args...;kwargs...))
     a = _DiskArray(data,chunksize=(5,4,2))
+    @show f
     @test isapprox(f(a),f(data))
     @test a.getindex_count[] <= 10
     #And test reduction along dimensions

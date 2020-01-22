@@ -1,12 +1,14 @@
 toRanges(r::Tuple) = r
 toRanges(r::CartesianIndices) = r.indices
-function Base._mapreduce(f,op,v::AbstractDiskArray)
+macro implement_mapreduce(t)
+quote
+function Base._mapreduce(f,op,v::$t)
   mapreduce(op,eachchunk(v)) do cI
     a = v[toRanges(cI)...]
     mapreduce(f,op,a)
   end
 end
-function Base.mapreducedim!(f, op, R::AbstractArray, A::AbstractDiskArray)
+function Base.mapreducedim!(f, op, R::AbstractArray, A::$t)
   sR = size(R)
   foreach(eachchunk(A)) do cI
     a = A[toRanges(cI)...]
@@ -17,18 +19,18 @@ function Base.mapreducedim!(f, op, R::AbstractArray, A::AbstractDiskArray)
   R
 end
 
-function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::AbstractDiskArray)
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t)
   cc = eachchunk(itr)
   isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
   Base.mapfoldl_impl(f,op,nt,itr,cc)
 end
-function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::AbstractDiskArray, cc)
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t, cc)
     y = first(cc)
     a = itr[toRanges(y)...]
     init = mapfoldl(f,op,a)
     Base.mapfoldl_impl(f,op,(init=init,),itr,Iterators.drop(cc,1))
 end
-function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::AbstractDiskArray, cc)
+function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::$t, cc)
   init = nt.init
   for y in cc
     a = itr[toRanges(y)...]
@@ -36,11 +38,15 @@ function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::AbstractDiskAr
   end
   init
 end
+end
+end
 
 import Base.Broadcast: Broadcasted
 
+macro implement_broadcast(t)
+quote
 #Broadcasting with a DiskArray on LHS
-function Base.copyto!(dest::AbstractDiskArray, bc::Broadcasted{Nothing})
+function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
   foreach(eachchunk(dest)) do c
     ar = [bc[i] for i in CartesianIndices(c)]
     dest[toRanges(c)...] = ar
@@ -51,9 +57,11 @@ end
 #As performance optimization one might:
 #Allocate the array only once if all chunks have the same size
 #Use FillArrays, if the DiskArray accepts these
-function Base.fill!(dest::AbstractDiskArray, value)
+function Base.fill!(dest::$t, value)
   foreach(eachchunk(dest)) do c
     ar = fill(value,length.(toRanges(c)))
     dest[toRanges(c)...] = ar
   end
+end
+end
 end

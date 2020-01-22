@@ -9,8 +9,14 @@ struct GridChunks{N}
     parentsize::NTuple{N,Int}
     chunksize::NTuple{N,Int}
     chunkgridsize::NTuple{N,Int}
+    offset::NTuple{N,Int}
 end
-GridChunks(a, chunksize) = GridChunks(size(a), chunksize, map(fld1,size(a),chunksize))
+GridChunks(a, chunksize; offset = ntuple(_->0,ndims(a))) = GridChunks(size(a), chunksize, getgridsize(a,chunksize,offset),offset)
+function getgridsize(a,chunksize,offset)
+  map(size(a),chunksize,offset) do s,cs,of
+    fld1(s+of,cs)
+  end
+end
 function Base.show(io::IO, g::GridChunks)
   print(io,"Regular ",join(g.chunksize,"x")," chunks over a ", join(g.parentsize,"x"), " array.")
 end
@@ -24,8 +30,8 @@ Base.length(c) = prod(size(c))
         return nothing
     else
         ichunk, state = r
-        outinds = map(ichunk.I, g.chunksize, g.parentsize) do ic, cs, ps
-            (ic-1)*cs+1:min(ic*cs, ps)
+        outinds = map(ichunk.I, g.chunksize, g.parentsize,g.offset) do ic, cs, ps, of
+            max((ic-1)*cs+1-of,1):min(ic*cs-of, ps)
         end |> CartesianIndices
         outinds, state
     end
@@ -55,7 +61,7 @@ struct Unchunked end
 function haschunks end
 haschunks(x) = Unchunked()
 
-estimate_chunksize(a::AbstractDiskArray) = estimate_chunksize(size(a), sizeof(eltype(a)))
+estimate_chunksize(a::AbstractArray) = estimate_chunksize(size(a), sizeof(eltype(a)))
 function estimate_chunksize(s, si)
   ii = searchsortedfirst(cumprod(collect(s)),default_chunk_size[]*1e6/si)
   ntuple(length(s)) do idim

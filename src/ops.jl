@@ -16,7 +16,6 @@ function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i...)
     argssub = map(arg->subsetarg(arg,i),a.bc.args)
     aout .= a.bc.f.(argssub...)
 end
-
 Base.broadcastable(bc::BroadcastDiskArray) = bc.bc
 haschunks(a::BroadcastDiskArray) = Chunked()
 function eachchunk(a::BroadcastDiskArray)
@@ -28,16 +27,51 @@ function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where N
     ElType = Base.Broadcast.combine_eltypes(bcf.f, bcf.args)
     BroadcastDiskArray{ElType,N,typeof(bcf)}(bcf)
 end
+Base.copy(a::BroadcastDiskArray) = copyto!(zeros(eltype(a),size(a)),a.bc)
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where N
     bcf = flatten(bc)
     cs,off = common_chunks(size(bcf),dest,bcf.args...)
     gcd = GridChunks(bcf,cs,offset=off)
     foreach(gcd) do cnow
-        argssub = map(i->subsetarg(i,cnow.indices),bc.args)
-        dest[cnow.indices...] .= bc.f.(argssub...)
+        argssub = map(i->subsetarg(i,cnow.indices),bcf.args)
+        dest[cnow.indices...] .= bcf.f.(argssub...)
     end
     dest
 end
+function common_chunks(s,args...)
+    N = length(s)
+    chunkedars = filter(i->haschunks(i)===Chunked(),collect(args))
+    all(ar->isa(eachchunk(ar),GridChunks), chunkedars) || error("Currently only chunks of type GridChunks can be merged by broadcast")
+    if isempty(chunkedars)
+        totalsize = sum(sizeof ∘ eltype, args)
+        return (estimate_chunksize(s,totalsize),ntuple(zero,N))
+    else
+
+        allcs = map(ar->(eachchunk(ar).chunksize,eachchunk(ar).offset),chunkedars)
+        tt = ntuple(N) do n
+            csnow = filter(cs->length(cs[1])>=n && cs[1][n]>1,allcs)
+            isempty(csnow) && return 1
+            cs = (csnow[1][1][n],csnow[1][2][n])
+            all(s->(s[1][n],s[2][n]) == cs,csnow) || error("Chunks do not align in dimension $n")
+            return cs
+        end
+        return map(i->i[1],tt),map(i->i[2],tt)
+    end
+end
+subsetarg(x::Number,a) = x
+function subsetarg(x::AbstractArray,a)
+    ashort = maybeonerange(size(x),a)
+    view(x,ashort...) #Maybe making a copy here would be faster, need to check...
+end
+repsingle(s,r) = s==1 ? (1:1) : r
+function maybeonerange(out,sizes,ranges)
+  s1,sr = splittuple(sizes...)
+  r1,rr = splittuple(ranges...)
+  maybeonerange((out...,repsingle(s1,r1)),sr,rr)
+end
+maybeonerange(out,::Tuple{},ranges) = out
+maybeonerange(sizes,ranges) = maybeonerange((),sizes,ranges)
+splittuple(x1,xr...) = x1,xr
 
 macro implement_mapreduce(t)
 quote
@@ -90,17 +124,9 @@ function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
   end
   dest
 end
-
-Base.BroadcastStyle(::Type{<:$t{<:Any,N}}) where N = ChunkStyle{N}()
-Base.BroadcastStyle(::Type{<:$t{<:Any,N}}) where N = ChunkStyle{N}()
-
-subsetarg(x::Number,a) = x
-function subsetarg(x::AbstractArray,a)
-    ashort = map((s,r)->s==1 ? (1:1) : r,size(x),a)
-    view(x,ashort...) #Maybe making a copy here would be faster, need to check...
-end
-function subsetarg(x::$t,a)
-    ashort = map((s,r)->s==1 ? (1:1) : r,size(x),a)
+Base.BroadcastStyle(T::Type{<:$t}) = ChunkStyle{ndims(T)}()
+function DiskArrays.subsetarg(x::$t,a)
+    ashort = maybeonerange(size(x),a)
     x[ashort...]
 end
 

@@ -8,6 +8,8 @@ n-dimensional (hyper)-rectangles.
 """
 abstract type AbstractDiskArray{T,N} <: AbstractArray{T,N} end
 
+Base.ndims(::Type{<:AbstractDiskArray{T,N}}) where {T,N} = N
+
 """
     readblock!(A::AbstractDiskArray, A_ret, r::AbstractUnitRange...)
 

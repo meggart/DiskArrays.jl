@@ -53,6 +53,7 @@ end
   @test a.getindex_count[] == 6
 end
 
+
 @testset "AbstractDiskArray setindex" begin
   a = _DiskArray(zeros(Int,4,5,1))
   a[1,1,1] = 1

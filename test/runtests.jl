@@ -10,6 +10,7 @@ struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
 end
 _DiskArray(a;chunksize=size(a)) = _DiskArray(Ref(0),Ref(0),a,chunksize)
 Base.size(a::_DiskArray) = size(a.parent)
+DiskArrays.haschunks(::_DiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::_DiskArray) = DiskArrays.GridChunks(a,a.chunksize)
 function DiskArrays.readblock!(a::_DiskArray,aout,i...)
   ndims(a) == length(i) || error("Number of indices is not correct")
@@ -93,7 +94,6 @@ import Statistics: mean
             (i,args...;kwargs...)->any(j->j<0.1,i,args...;kwargs...),
             (i,args...;kwargs...)->mapreduce(x->2*x,+,i,args...;kwargs...))
     a = _DiskArray(data,chunksize=(5,4,2))
-    @show f
     @test isapprox(f(a),f(data))
     @test a.getindex_count[] <= 10
     #And test reduction along dimensions
@@ -106,4 +106,47 @@ import Statistics: mean
     @test all(isapprox.(f(a,dims=(1,3)),f(data,dims=(1,3))))
     @test f in (minimum, maximum) || a.getindex_count[] <= 12
   end
+end
+
+@testset "Broadcast" begin
+  a_disk1 = _DiskArray(rand(10,9,2), chunksize=(5,3,2))
+  a_disk2 = _DiskArray(rand(1:10,1,9), chunksize=(1,3))
+  a_mem   = reshape(1:2,1,1,2);
+
+  s = a_disk1 .+ a_disk2
+  #Test lazy broadcasting
+  @test s isa DiskArrays.BroadcastDiskArray
+  @test a_disk1.getindex_count[]==0
+  @test a_disk1.setindex_count[]==0
+  @test a_disk2.getindex_count[]==0
+  @test a_disk2.setindex_count[]==0
+  @test size(s)==(10,9,2)
+  @test eltype(s) == Float64
+  #Lets merge another broadcast
+  s2 = s ./ a_mem
+  @test s isa DiskArrays.BroadcastDiskArray
+  @test a_disk1.getindex_count[]==0
+  @test a_disk2.getindex_count[]==0
+  @test size(s)==(10,9,2)
+  @test eltype(s) == Float64
+  #And now do the computation with Array as a sink
+  aout = zeros(10,9,2)
+  aout .= s2
+  #Test if the result is correct
+  @test aout == (a_disk1.parent .+ a_disk2.parent)./a_mem
+  @test a_disk1.getindex_count[]==6
+  @test a_disk2.getindex_count[]==6
+  #Now use another DiskArray as the output
+  aout = _DiskArray(zeros(10,9,2),chunksize=(5,3,2))
+  aout .= s ./ a_mem
+  @test aout.parent == (a_disk1.parent .+ a_disk2.parent)./a_mem
+  @test aout.setindex_count[]==6
+  @test a_disk1.getindex_count[]==12
+  @test a_disk2.getindex_count[]==12
+  #Test reduction of broadcasted expression
+  r = sum(s2, dims=(1,2))
+  @test all(isapprox.(sum((a_disk1.parent .+ a_disk2.parent)./a_mem,dims=(1,2)),r))
+  @test a_disk1.getindex_count[]==18
+  @test a_disk2.getindex_count[]==18
+
 end

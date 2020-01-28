@@ -33,7 +33,8 @@ function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where
   cs,off = common_chunks(size(bcf),dest,bcf.args...)
   gcd = GridChunks(bcf,cs,offset=off)
   foreach(gcd) do cnow
-
+    #Possible optimization would be to use a LRU cache here, so that data has not
+    #to be read twice in case of repeating indices 
     argssub = map(i->subsetarg(i,cnow.indices),bcf.args)
     dest[cnow.indices...] .= bcf.f.(argssub...)
   end

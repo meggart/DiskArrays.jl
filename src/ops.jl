@@ -1,5 +1,44 @@
+import Base.Broadcast: Broadcasted, AbstractArrayStyle, DefaultArrayStyle, Broadcasted, flatten
 toRanges(r::Tuple) = r
 toRanges(r::CartesianIndices) = r.indices
+
+struct ChunkStyle{N} <: Base.Broadcast.AbstractArrayStyle{N} end
+
+Base.BroadcastStyle(::ChunkStyle{N}, ::ChunkStyle{M}) where {N,M}= ChunkStyle{max(N,M)}()
+Base.BroadcastStyle(::ChunkStyle{N}, ::DefaultArrayStyle{M}) where {N,M}= ChunkStyle{max(N,M)}()
+Base.BroadcastStyle(::DefaultArrayStyle{M},::ChunkStyle{N}) where {N,M}= ChunkStyle{max(N,M)}()
+
+struct BroadcastDiskArray{T,N,BC<:Broadcasted{<:ChunkStyle{N}}} <: AbstractDiskArray{T,N}
+    bc::BC
+end
+Base.size(bc::BroadcastDiskArray) = size(bc.bc)
+function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i...)
+    argssub = map(arg->subsetarg(arg,i),a.bc.args)
+    aout .= a.bc.f.(argssub...)
+end
+
+Base.broadcastable(bc::BroadcastDiskArray) = bc.bc
+haschunks(a::BroadcastDiskArray) = Chunked()
+function eachchunk(a::BroadcastDiskArray)
+    cs,off = common_chunks(size(a.bc),a.bc.args...)
+    GridChunks(a.bc,cs,offset=off)
+end
+function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where N
+    bcf = flatten(bc)
+    ElType = Base.Broadcast.combine_eltypes(bcf.f, bcf.args)
+    BroadcastDiskArray{ElType,N,typeof(bcf)}(bcf)
+end
+function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where N
+    bcf = flatten(bc)
+    cs,off = common_chunks(size(bcf),dest,bcf.args...)
+    gcd = GridChunks(bcf,cs,offset=off)
+    foreach(gcd) do cnow
+        argssub = map(i->subsetarg(i,cnow.indices),bc.args)
+        dest[cnow.indices...] .= bc.f.(argssub...)
+    end
+    dest
+end
+
 macro implement_mapreduce(t)
 quote
 function Base._mapreduce(f,op,v::$t)
@@ -41,8 +80,6 @@ end
 end
 end
 
-import Base.Broadcast: Broadcasted
-
 macro implement_broadcast(t)
 quote
 #Broadcasting with a DiskArray on LHS
@@ -52,6 +89,19 @@ function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
     dest[toRanges(c)...] = ar
   end
   dest
+end
+
+Base.BroadcastStyle(::Type{<:$t{<:Any,N}}) where N = ChunkStyle{N}()
+Base.BroadcastStyle(::Type{<:$t{<:Any,N}}) where N = ChunkStyle{N}()
+
+subsetarg(x::Number,a) = x
+function subsetarg(x::AbstractArray,a)
+    ashort = map((s,r)->s==1 ? (1:1) : r,size(x),a)
+    view(x,ashort...) #Maybe making a copy here would be faster, need to check...
+end
+function subsetarg(x::$t,a)
+    ashort = map((s,r)->s==1 ? (1:1) : r,size(x),a)
+    x[ashort...]
 end
 
 #This is a heavily allocating implementation, but working for all cases.

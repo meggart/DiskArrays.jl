@@ -35,7 +35,7 @@ function DiskArrays.writeblock!(a::ReshapedDiskArray,v,i...)
   DiskArrays.writeblock!(a.parent,reshape(v,map(length,inew)),inew...)
   nothing
 end
-function Base._reshape(parent::AbstractDiskArray{T,M}, dims::NTuple{N,Int}) where {T,N,M}
+function reshape_disk(parent, dims)
     n = length(parent)
     ndims(parent) > length(dims) && error("For DiskArrays, reshape is restricted to adding singleton dimensions")
     prod(dims) == n || _throw_dmrs(n, "size", dims)
@@ -51,9 +51,8 @@ function Base._reshape(parent::AbstractDiskArray{T,M}, dims::NTuple{N,Int}) wher
             end
         end
     end
-    ReshapedDiskArray{T,N,typeof(parent),M}(parent,keepdim,dims)
+    ReshapedDiskArray{eltype(parent),length(dims),typeof(parent),ndims(parent)}(parent,keepdim,dims)
 end
-
 
 import Base: _throw_dmrs
 import DiskArrays: splittuple, toRanges
@@ -61,9 +60,9 @@ import Base.PermutedDimsArrays: genperm
 struct PermutedDiskArray{T,N,P<:PermutedDimsArray} <: AbstractDiskArray{T,N}
     a::P
 end
-function Base.permutedims(a::AbstractDiskArray{T,N},perm) where {T,N}
+function permutedims_disk(a,perm)
   pd = PermutedDimsArray(a,perm)
-  PermutedDiskArray{T,N,typeof(pd)}(pd)
+  PermutedDiskArray{eltype(a),ndims(a),typeof(pd)}(pd)
 end
 Base.size(r::PermutedDiskArray) = size(r.a)
 haschunks(a::PermutedDiskArray) = haschunks(a.a.parent)
@@ -77,4 +76,18 @@ function DiskArrays.writeblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N
   inew = genperm(i, iperm)
   DiskArrays.writeblock!(a.a.parent,PermutedDimsArray(v,iperm),inew...)
   nothing
+end
+
+macro implement_reshape(t)
+  quote
+    Base._reshape(parent::$t, dims::NTuple{N,Int}) where N =
+      reshape_disk(parent, dims)
+  end
+end
+
+macro implement_permutedims(t)
+  quote
+    Base.permutedims(parent::$t, perm) =
+      permutedims_disk(parent, perm)
+  end
 end

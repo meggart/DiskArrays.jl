@@ -201,6 +201,8 @@ quote
   @implement_broadcast $t
   @implement_iteration $t
   @implement_mapreduce $t
+  @implement_reshape $t
+  @implement_permutedims $t
 end
 end
 

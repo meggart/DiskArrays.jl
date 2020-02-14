@@ -191,6 +191,7 @@ include("chunks.jl")
 include("ops.jl")
 include("iterator.jl")
 include("subarrays.jl")
+include("permute_reshape.jl")
 
 #The all-in-one macro
 macro implement_diskarray(t)

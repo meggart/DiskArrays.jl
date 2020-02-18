@@ -66,13 +66,23 @@ function permutedims_disk(a,perm)
 end
 Base.size(r::PermutedDiskArray) = size(r.a)
 haschunks(a::PermutedDiskArray) = haschunks(a.a.parent)
-eachchunk(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}}) where {T,N,perm,iperm} = map(j->CartesianIndices(genperm(toRanges(j),perm)),eachchunk(a.a.parent))
-function DiskArrays.readblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},aout,i...) where {T,N,perm,iperm}
+_getperm(a::PermutedDiskArray) = _getperm(a.a)
+_getperm(::PermutedDimsArray{<:Any,<:Any,perm}) where perm = perm
+_getiperm(a::PermutedDiskArray) = _getiperm(a.a)
+_getiperm(::PermutedDimsArray{<:Any,<:Any,<:Any,iperm}) where iperm = iperm
+function eachchunk(a::PermutedDiskArray)
+  cc = eachchunk(a.a.parent)
+  perm = _getperm(a.a)
+  GridChunks(a,genperm(cc.chunksize,perm),offset=genperm(cc.offset,perm))
+end
+function DiskArrays.readblock!(a::PermutedDiskArray,aout,i...)
+  iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.readblock!(a.a.parent,PermutedDimsArray(aout,iperm),inew...)
   nothing
 end
-function DiskArrays.writeblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},v,i...) where {T,N,perm,iperm}
+function DiskArrays.writeblock!(a::PermutedDiskArray,v,i...)
+  iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.writeblock!(a.a.parent,PermutedDimsArray(v,iperm),inew...)
   nothing

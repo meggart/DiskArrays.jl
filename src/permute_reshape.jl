@@ -55,7 +55,6 @@ function reshape_disk(parent, dims)
 end
 
 import Base: _throw_dmrs
-import DiskArrays: splittuple, toRanges
 import Base.PermutedDimsArrays: genperm
 struct PermutedDiskArray{T,N,P<:PermutedDimsArray} <: AbstractDiskArray{T,N}
     a::P

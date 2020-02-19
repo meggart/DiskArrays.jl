@@ -25,6 +25,30 @@ should be supported as well.
 """
 function writeblock!() end
 
+function readblock!(A::AbstractDiskArray, A_ret, r::OrdinalRange...)
+  #Implement fallback method if DiskArray does not support strided reading
+  #Currently this allocates an intermediate array. In the future, this
+  #function could test how sparse the reading is and maybe be smarter here
+  #by reading slices.
+  mi,ma = map(minimum,r), map(maximum,r)
+  A_temp = similar(A_ret,map((a,b)->b-a+1,mi,ma))
+  readblock!(A,A_temp,map(:,mi,ma)...)
+  A_ret .= view(A_temp,map(ir->ir.-(minimum(ir).-1),r)...)
+  nothing
+end
+
+function writeblock!(A::AbstractDiskArray, A_ret, r::OrdinalRange...)
+  #Implement fallback method if DiskArray does not support strided reading
+  #Currently this allocates an intermediate array. In the future, this
+  #function could test how sparse the reading is and maybe be smarter here
+  #by reading slices.
+  mi,ma = map(minimum,r), map(maximum,r)
+  A_temp = similar(A_ret,map((a,b)->b-a+1,mi,ma))
+  A_temp[map(ir->ir.-(minimum(ir).-1),r)...] = A_ret
+  writeblock!(A,A_temp,map(:,mi,ma)...)
+  nothing
+end
+
 Base.ndims(::AbstractDiskArray{<:Any,N}) where N = N
 Base.eltype(::AbstractDiskArray{T}) where T = T
 
@@ -75,7 +99,7 @@ interpret_indices_disk(A, r::Tuple{<:CartesianIndices}) =
 
 
 
-function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractUnitRange, Colon}}) where N
+function interpret_indices_disk(A, r::NTuple{N, Union{Integer, OrdinalRange, Colon}}) where N
   if ndims(A)==N
     inds = map(_convert_index,r,size(A))
     resh = DimsDropper(findints(r))
@@ -149,7 +173,7 @@ _findints(c, i, x, rest...) = _findints(c, i+1, rest...)
 _findints(c, i)  = c
 #Normal indexing for a full subset of an array
 _convert_index(i::Integer, s::Integer) = i:i
-_convert_index(i::AbstractUnitRange, s::Integer) = i
+_convert_index(i::OrdinalRange, s::Integer) = i
 _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 
 macro implement_getindex(t)

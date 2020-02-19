@@ -22,7 +22,7 @@ eachchunk(a::ReshapedDiskArray{<:Any,N}) where N = map(eachchunk(a.parent)) do j
         end
     end::NTuple{N,UnitRange{Int}}
 end
-function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i...)
+function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i::OrdinalRange...)
   inew = tuple_tuple_getindex(i,a.keepdim)
   DiskArrays.readblock!(a.parent,reshape(aout,map(length,inew)),inew...)
   nothing
@@ -30,7 +30,7 @@ end
 tuple_tuple_getindex(t,i) = _ttgi((),t,i...)
 _ttgi(o,t,i1,irest...) = _ttgi((o...,t[i1]),t,irest...)
 _ttgi(o,t,i1) = (o...,t[i1])
-function DiskArrays.writeblock!(a::ReshapedDiskArray,v,i...)
+function DiskArrays.writeblock!(a::ReshapedDiskArray,v,i::OrdinalRange...)
   inew = tuple_tuple_getindex(i,a.keepdim)
   DiskArrays.writeblock!(a.parent,reshape(v,map(length,inew)),inew...)
   nothing
@@ -67,12 +67,12 @@ end
 Base.size(r::PermutedDiskArray) = size(r.a)
 haschunks(a::PermutedDiskArray) = haschunks(a.a.parent)
 eachchunk(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}}) where {T,N,perm,iperm} = map(j->CartesianIndices(genperm(toRanges(j),perm)),eachchunk(a.a.parent))
-function DiskArrays.readblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},aout,i...) where {T,N,perm,iperm}
+function DiskArrays.readblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},aout,i::OrdinalRange...) where {T,N,perm,iperm}
   inew = genperm(i, iperm)
   DiskArrays.readblock!(a.a.parent,PermutedDimsArray(aout,iperm),inew...)
   nothing
 end
-function DiskArrays.writeblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},v,i...) where {T,N,perm,iperm}
+function DiskArrays.writeblock!(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}},v,i::OrdinalRange...) where {T,N,perm,iperm}
   inew = genperm(i, iperm)
   DiskArrays.writeblock!(a.a.parent,PermutedDimsArray(v,iperm),inew...)
   nothing

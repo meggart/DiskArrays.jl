@@ -171,6 +171,8 @@ end
   test_view(a)
 end
 
+# The remaing tests only work for Julia >= 1.3
+if VERSION >= v"1.3.0"
 import Statistics: mean
 @testset "Reductions" begin
   a = data -> _DiskArray(data,chunksize=(5,4,2))
@@ -205,4 +207,5 @@ import Base.PermutedDimsArrays.invperm
   test_view(a)
   a = data -> permutedims(_DiskArray(permutedims(data,ip),chunksize=(4,2,5)),p)
   test_reductions(a)
+end
 end

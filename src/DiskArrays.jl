@@ -198,11 +198,13 @@ macro implement_diskarray(t)
 quote
   @implement_getindex $t
   @implement_setindex $t
-  @implement_broadcast $t
-  @implement_iteration $t
-  @implement_mapreduce $t
-  @implement_reshape $t
-  @implement_permutedims $t
+  if VERSION >= v"1.3.0"
+    @implement_broadcast $t
+    @implement_iteration $t
+    @implement_mapreduce $t
+    @implement_reshape $t
+    @implement_permutedims $t
+  end
 end
 end
 

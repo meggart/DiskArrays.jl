@@ -1,22 +1,24 @@
-const SubDiskArray = SubArray{<:Any,<:Any,<:AbstractDiskArray}
-#Allow getindex for SubArrays
-function Base.getindex(a::SubDiskArray,i...)
-  pinds = parentindices(view(a,i...))
-  getindex_disk(parent(a), pinds...)
+struct SubDiskArray{T,N} <: AbstractDiskArray{T,N}
+  v::SubArray{T,N}
 end
-#Remove amiguity
-function Base.getindex(a::SubDiskArray, i::Vararg{Int64,N}) where N
-  pinds = parentindices(view(a,i...))
-  getindex_disk(parent(a), pinds...)
+function Base.view(a::AbstractDiskArray,i...)
+  SubDiskArray(SubArray(a,i))
 end
-function Base.setindex!(a::SubDiskArray, v, i...)
-  pinds = parentindices(view(a,i...))
-  setindex_disk!(parent(a),v,pinds...)
+function Base.view(a::SubDiskArray,i...)
+  SubDiskArray(view(a.v,i...))
 end
-function Base.show(io::IO, ::MIME"text/plain", X::SubDiskArray)
-  println(io, "Disk Array view with size ", join(size(X)," x "))
+function readblock!(a::SubDiskArray,aout,i...)
+  pinds = parentindices(view(a.v,i...))
+  inds,resh = interpret_indices_disk(parent(a.v),pinds)
+  readblock!(parent(a.v),reshape(aout,map(length,inds)...),inds...)
 end
-eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a),a)
+function writeblock!(a::SubDiskArray,v,i...)
+  pinds = parentindices(view(a.v,i...))
+  inds,resh = interpret_indices_disk(parent(a.v),pinds)
+  writeblock!(parent(a.v),reshape(v,map(length,inds)...),inds...)
+end
+Base.size(a::SubDiskArray) = size(a.v)
+eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a.v.parent),a.v)
 function eachchunk_view(::Chunked, vv)
   pinds = parentindices(vv)
   iomit = findints(pinds)
@@ -27,8 +29,4 @@ function eachchunk_view(::Chunked, vv)
   GridChunks(vv,newcs,offset = offsets)
 end
 eachchunk_view(::Unchunked, a) = GridChunks(a,estimate_chunksize(a))
-haschunks(a::SubDiskArray) = haschunks(parent(a))
-
-@implement_mapreduce SubDiskArray
-@implement_broadcast SubDiskArray
-@implement_iteration SubDiskArray
+haschunks(a::SubDiskArray) = haschunks(parent(a.v))

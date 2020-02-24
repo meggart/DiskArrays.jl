@@ -74,13 +74,13 @@ function eachchunk(a::PermutedDiskArray)
   perm = _getperm(a.a)
   GridChunks(a,genperm(cc.chunksize,perm),offset=genperm(cc.offset,perm))
 end
-function DiskArrays.readblock!(a::PermutedDiskArray,aout,i...)
+function DiskArrays.readblock!(a::PermutedDiskArray,aout,i::OrdinalRange...)
   iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.readblock!(a.a.parent,PermutedDimsArray(aout,iperm),inew...)
   nothing
 end
-function DiskArrays.writeblock!(a::PermutedDiskArray,v,i...)
+function DiskArrays.writeblock!(a::PermutedDiskArray,v,i::OrdinalRange...)
   iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.writeblock!(a.a.parent,PermutedDimsArray(v,iperm),inew...)

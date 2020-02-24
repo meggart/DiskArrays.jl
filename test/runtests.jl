@@ -132,19 +132,19 @@ function test_broadcast(a_disk1)
   aout = zeros(10,9,2)
   aout .= s2
   #Test if the result is correct
-  @test aout == (a_disk1.parent .+ a_disk2.parent)./a_mem
+  @test aout == (trueparent(a_disk1) .+ trueparent(a_disk2))./a_mem
   @test getindex_count(a_disk1)==6
   @test getindex_count(a_disk2)==6
   #Now use another DiskArray as the output
   aout = _DiskArray(zeros(10,9,2),chunksize=(5,3,2))
   aout .= s ./ a_mem
-  @test aout.parent == (a_disk1.parent .+ a_disk2.parent)./a_mem
+  @test trueparent(aout) == (trueparent(a_disk1) .+ trueparent(a_disk2))./a_mem
   @test setindex_count(aout)==6
   @test getindex_count(a_disk1)==12
   @test getindex_count(a_disk2)==12
   #Test reduction of broadcasted expression
   r = sum(s2, dims=(1,2))
-  @test all(isapprox.(sum((a_disk1.parent .+ a_disk2.parent)./a_mem,dims=(1,2)),r))
+  @test all(isapprox.(sum((trueparent(a_disk1) .+ trueparent(a_disk2))./a_mem,dims=(1,2)),r))
   @test getindex_count(a_disk1)==18
   @test getindex_count(a_disk2)==18
 end
@@ -176,6 +176,8 @@ end
   test_view(a)
 end
 
+# The remaing tests only work for Julia >= 1.3
+if VERSION >= v"1.3.0"
 import Statistics: mean
 @testset "Reductions" begin
   a = data -> _DiskArray(data,chunksize=(5,4,2))
@@ -210,4 +212,7 @@ import Base.PermutedDimsArrays.invperm
   test_view(a)
   a = data -> permutedims(_DiskArray(permutedims(data,ip),chunksize=(4,2,5)),p)
   test_reductions(a)
+  a_disk1 = permutedims(_DiskArray(rand(9,2,10), chunksize=(3,2,5)),p)
+  test_broadcast(a_disk1)
+end
 end

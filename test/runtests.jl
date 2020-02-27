@@ -22,14 +22,14 @@ trueparent(a::ReshapedDiskArray) = trueparent(a.parent)
 getindex_count(a::PermutedDiskArray) = getindex_count(a.a.parent)
 setindex_count(a::PermutedDiskArray) = setindex_count(a.a.parent)
 trueparent(a::PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}}) where {T,N,perm,iperm} = permutedims(trueparent(a.a.parent),perm)
-function DiskArrays.readblock!(a::_DiskArray,aout,i...)
+function DiskArrays.readblock!(a::_DiskArray,aout,i::AbstractUnitRange...)
   ndims(a) == length(i) || error("Number of indices is not correct")
   all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
   #println("reading from indices ", join(string.(i)," "))
   a.getindex_count[] += 1
   aout .= a.parent[i...]
 end
-function DiskArrays.writeblock!(a::_DiskArray,v,i...)
+function DiskArrays.writeblock!(a::_DiskArray,v,i::AbstractUnitRange...)
   ndims(a) == length(i) || error("Number of indices is not correct")
   all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
   #println("Writing to indices ", join(string.(i)," "))
@@ -43,12 +43,14 @@ function test_getindex(a)
   @test a[2,3,1,1] == 10
   @test a[:,1] == [1, 2, 3, 4]
   @test a[1:2, 1:2,1,1] == [1 5; 2 6]
+  @test a[2:2:4,1:2:5] == [2 10 18; 4 12 20]
+  @test a[end:-1:1,1,1] == [4,3,2,1]
   # Test bitmask indexing
   m = falses(4,5,1)
   m[2,:,1] .= true
   @test a[m] == [2,6,10,14,18]
   #Test that readblock was called exactly onces for every getindex
-  @test getindex_count(a) == 6
+  @test getindex_count(a) == 8
 end
 
 function test_setindex(a)
@@ -67,6 +69,9 @@ function test_setindex(a)
   @test trueparent(a)[2,:,1] == [1,2,3,4,5]
   @test trueparent(a)[3,3:4,1] == [3,4]
   @test trueparent(a)[4,:,1] == [10,11,12,13,14]
+  a[1:2:4,1:2:5,1] = [1 2 3; 5 6 7]
+  @test trueparent(a)[1:2:4,1:2:5,1] == [1 2 3; 5 6 7]
+  @test setindex_count(a) == 7
 end
 
 function test_view(a)

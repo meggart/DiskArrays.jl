@@ -22,7 +22,7 @@ eachchunk(a::ReshapedDiskArray{<:Any,N}) where N = map(eachchunk(a.parent)) do j
         end
     end::NTuple{N,UnitRange{Int}}
 end
-function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i...)
+function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i::OrdinalRange...)
   inew = tuple_tuple_getindex(i,a.keepdim)
   DiskArrays.readblock!(a.parent,reshape(aout,map(length,inew)),inew...)
   nothing
@@ -30,7 +30,7 @@ end
 tuple_tuple_getindex(t,i) = _ttgi((),t,i...)
 _ttgi(o,t,i1,irest...) = _ttgi((o...,t[i1]),t,irest...)
 _ttgi(o,t,i1) = (o...,t[i1])
-function DiskArrays.writeblock!(a::ReshapedDiskArray,v,i...)
+function DiskArrays.writeblock!(a::ReshapedDiskArray,v,i::OrdinalRange...)
   inew = tuple_tuple_getindex(i,a.keepdim)
   DiskArrays.writeblock!(a.parent,reshape(v,map(length,inew)),inew...)
   nothing
@@ -74,13 +74,13 @@ function eachchunk(a::PermutedDiskArray)
   perm = _getperm(a.a)
   GridChunks(a,genperm(cc.chunksize,perm),offset=genperm(cc.offset,perm))
 end
-function DiskArrays.readblock!(a::PermutedDiskArray,aout,i...)
+function DiskArrays.readblock!(a::PermutedDiskArray,aout,i::OrdinalRange...)
   iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.readblock!(a.a.parent,PermutedDimsArray(aout,iperm),inew...)
   nothing
 end
-function DiskArrays.writeblock!(a::PermutedDiskArray,v,i...)
+function DiskArrays.writeblock!(a::PermutedDiskArray,v,i::OrdinalRange...)
   iperm = _getiperm(a)
   inew = genperm(i, iperm)
   DiskArrays.writeblock!(a.a.parent,PermutedDimsArray(v,iperm),inew...)

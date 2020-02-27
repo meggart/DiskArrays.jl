@@ -7,12 +7,12 @@ end
 function Base.view(a::SubDiskArray,i...)
   SubDiskArray(view(a.v,i...))
 end
-function readblock!(a::SubDiskArray,aout,i...)
+function readblock!(a::SubDiskArray,aout,i::OrdinalRange...)
   pinds = parentindices(view(a.v,i...))
   inds,resh = interpret_indices_disk(parent(a.v),pinds)
   readblock!(parent(a.v),reshape(aout,map(length,inds)...),inds...)
 end
-function writeblock!(a::SubDiskArray,v,i...)
+function writeblock!(a::SubDiskArray,v,i::OrdinalRange...)
   pinds = parentindices(view(a.v,i...))
   inds,resh = interpret_indices_disk(parent(a.v),pinds)
   writeblock!(parent(a.v),reshape(v,map(length,inds)...),inds...)

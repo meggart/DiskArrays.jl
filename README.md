@@ -55,13 +55,13 @@ PseudoDiskArray(a;chunksize=size(a)) = PseudoDiskArray(a,chunksize)
 haschunks(a::PseudoDiskArray) = Chunked()
 eachchunk(a::PseudoDiskArray) = GridChunks(a,a.chunksize)
 Base.size(a::PseudoDiskArray) = size(a.parent)
-function DiskArrays.readblock!(a::PseudoDiskArray,aout,i...)
+function DiskArrays.readblock!(a::PseudoDiskArray,aout,i::AbstractUnitRange...)
   ndims(a) == length(i) || error("Number of indices is not correct")
   all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
   println("Reading at index ", join(string.(i)," "))
   aout .= a.parent[i...]
 end
-function DiskArrays.writeblock!(a::PseudoDiskArray,v,i...)
+function DiskArrays.writeblock!(a::PseudoDiskArray,v,i::AbstractUnitRange...)
   ndims(a) == length(i) || error("Number of indices is not correct")
   all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
   println("Writing to indices ", join(string.(i)," "))
@@ -155,3 +155,7 @@ Reading at index Base.OneTo(10) Base.OneTo(9) 1:1
  0.76309    0.648815  0.632453  0.623295      2.0       2.0       0.387723
  0.0882056  0.842403  0.147516  0.0562536     2.0       2.0       0.107673
 ````
+
+## Accessing strided Arrays
+
+One

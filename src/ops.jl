@@ -12,7 +12,7 @@ struct BroadcastDiskArray{T,N,BC<:Broadcasted{<:ChunkStyle{N}}} <: AbstractDiskA
   bc::BC
 end
 Base.size(bc::BroadcastDiskArray) = size(bc.bc)
-function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i...)
+function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i::OrdinalRange...)
   argssub = map(arg->subsetarg(arg,i),a.bc.args)
   aout .= a.bc.f.(argssub...)
 end
@@ -34,7 +34,7 @@ function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where
   gcd = GridChunks(bcf,cs,offset=off)
   foreach(gcd) do cnow
     #Possible optimization would be to use a LRU cache here, so that data has not
-    #to be read twice in case of repeating indices 
+    #to be read twice in case of repeating indices
     argssub = map(i->subsetarg(i,cnow.indices),bcf.args)
     dest[cnow.indices...] .= bcf.f.(argssub...)
   end

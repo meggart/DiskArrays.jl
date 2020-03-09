@@ -24,7 +24,7 @@ Base.size(g::GridChunks) = g.chunkgridsize
 Base.size(g::GridChunks, dim) = g.chunkgridsize[dim]
 Base.IteratorSize(::Type{GridChunks{N}}) where N = Base.HasShape{N}()
 Base.eltype(::Type{GridChunks{N}}) where N = CartesianIndices{N,NTuple{N,UnitRange{Int64}}}
-Base.length(c) = prod(size(c))
+Base.length(c::GridChunks) = prod(size(c))
 @inline function _iterate(g,r)
     if r === nothing
         return nothing

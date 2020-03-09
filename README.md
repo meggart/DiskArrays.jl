@@ -158,4 +158,7 @@ Reading at index Base.OneTo(10) Base.OneTo(9) 1:1
 
 ## Accessing strided Arrays
 
-One
+There are situations where one wants to read every other value along a certain axis or provide arbitrary strides. Some DiskArray backends may want to provide optimized methods to read these strided arrays. 
+In this case a backend can define `readblock!(a,aout,r::OrdinalRange...)` and the respective `writeblock`
+method which will overwrite the fallback behavior that would read the whol block of data and only return
+the desired range.

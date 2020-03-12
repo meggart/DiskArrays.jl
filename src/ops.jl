@@ -121,7 +121,7 @@ macro implement_broadcast(t)
     #Broadcasting with a DiskArray on LHS
     function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
       foreach(eachchunk(dest)) do c
-        ar = [bc[i] for i in CartesianIndices(c)]
+        ar = [bc[i] for i in CartesianIndices(toRanges(c))]
         dest[toRanges(c)...] = ar
       end
       dest

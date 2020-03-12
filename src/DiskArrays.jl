@@ -210,6 +210,9 @@ end
 function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
   println(io, "Disk Array with size ", join(size(X)," x "))
 end
+function Base.show(io::IO, X::AbstractDiskArray)
+  println(io, "Disk Array with size ", join(size(X)," x "))
+end
 
 include("chunks.jl")
 include("ops.jl")

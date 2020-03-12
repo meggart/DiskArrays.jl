@@ -1,8 +1,11 @@
 struct SubDiskArray{T,N} <: AbstractDiskArray{T,N}
   v::SubArray{T,N}
 end
+replace_colon(s,::Colon) = Base.OneTo(s)
+replace_colon(s,r) = r
 function Base.view(a::AbstractDiskArray,i...)
-  SubDiskArray(SubArray(a,i))
+  i2 = replace_colon.(size(a),i)
+  SubDiskArray(SubArray(a,i2))
 end
 function Base.view(a::SubDiskArray,i...)
   SubDiskArray(view(a.v,i...))

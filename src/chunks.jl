@@ -11,9 +11,10 @@ struct GridChunks{N}
     chunkgridsize::NTuple{N,Int}
     offset::NTuple{N,Int}
 end
-GridChunks(a, chunksize; offset = ntuple(_->0,ndims(a))) = GridChunks(Int64.(size(a)), Int64.(chunksize), getgridsize(a,chunksize,offset),offset)
+GridChunks(a, chunksize; offset = (_->0).(size(a))) = GridChunks(Int64.(size(a)), Int64.(chunksize), getgridsize(size(a),chunksize,offset),offset)
+GridChunks(a::Tuple, chunksize; offset = (_->0).(a)) = GridChunks(Int64.(a), Int64.(chunksize), getgridsize(a,chunksize,offset),offset)
 function getgridsize(a,chunksize,offset)
-  map(size(a),chunksize,offset) do s,cs,of
+  map(a,chunksize,offset) do s,cs,of
     fld1(s+of,cs)
   end
 end

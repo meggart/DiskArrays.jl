@@ -160,8 +160,8 @@ end
 #Some helper functions
 "For two given tuples return a truncated version of both so they have common length"
 commonlength(a, b) = _commonlength((first(a),), (first(b),),Base.tail(a), Base.tail(b))
-commonlength(::Tuple{}, b) = ()
-commonlength(a, ::Tuple{}) = ()
+commonlength(::Tuple{}, b) = (),()
+commonlength(a, ::Tuple{}) = (),()
 _commonlength(a1, b1, a, b) = _commonlength((a1..., first(a)), (b1..., first(b)), Base.tail(a), Base.tail(b))
 _commonlength(a1, b1, ::Tuple{}, b) = (a1,b1)
 _commonlength(a1, b1, a, ::Tuple{}) = (a1, b1)

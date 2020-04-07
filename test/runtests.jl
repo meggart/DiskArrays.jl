@@ -175,6 +175,16 @@ end
   test_setindex(a)
 end
 
+@testset "Zerodimensional" begin
+  a = _DiskArray(zeros(Int))
+  @test a[] == 0
+  @test a[1] == 0
+  a[] = 5
+  @test a[] == 5
+  a[1] = 6
+  @test a[] == 6
+end
+
 @testset "Views" begin
   a = _DiskArray(zeros(Int,4,5,1))
   test_view(a)

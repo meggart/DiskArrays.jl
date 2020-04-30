@@ -25,6 +25,14 @@ should be supported as well.
 """
 function writeblock!() end
 
+"""
+    resizable_indices(A::AbstractDiskArray)
+
+Returns a Tuple of dimensions for which no bounds checking is performed.
+Defaults to ().
+"""
+resizable_indices(A) = ()
+
 function readblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
   #Implement fallback method if DiskArray does not support strided reading
   #Currently this allocates an intermediate array. In the future, this
@@ -55,13 +63,14 @@ Base.eltype(::AbstractDiskArray{T}) where T = T
 
 
 function getindex_disk(a, i...)
-  inds, trans = interpret_indices_disk(a,i)
+  inds, trans = interpret_indices_disk(size(a),i)
   data = Array{eltype(a)}(undef, map(length,inds)...)
   readblock!(a,data,inds...)
   trans(data)
 end
 function setindex_disk!(a::AbstractDiskArray,v::AbstractArray,i...)
-  inds, trans = interpret_indices_disk(a,i)
+  s = get_size2(a,v)
+  inds, trans = interpret_indices_disk(s,i)
   data = reshape(v,map(length,inds))
   writeblock!(a,data,inds...)
   v
@@ -87,7 +96,7 @@ end
 
 #Read the entire array and reshape to 1D in the end
 function interpret_indices_disk(A, r::Tuple{Colon})
-  return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
+  return map(Base.OneTo, A), Reshaper(prod(A))
 end
 
 interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) =
@@ -100,25 +109,25 @@ interpret_indices_disk(A, r::Tuple{<:CartesianIndices}) =
 
 
 function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractVector, Colon}}) where N
-  if ndims(A)==N
-    inds = map(_convert_index,r,size(A))
+  if length(A)==N
+    inds = map(_convert_index,r,A)
     resh = DimsDropper(findints(r))
     return inds, resh
-  elseif ndims(A)<N
-    foreach((ndims(A)+1):N) do i
+  elseif length(A)<N
+    foreach((length(A)+1):N) do i
       r[i]==1 || throw(BoundsError(A, r))
     end
-    _, rshort = commonlength(size(A),r)
+    _, rshort = commonlength(A,r)
     return interpret_indices_disk(A, rshort)
   else
-    size(A,N+1)==1 || throw(BoundsError(A, r))
+    A[N+1]==1 || throw(BoundsError(A, r))
     return interpret_indices_disk(A, (r...,1))
   end
 end
 
 function interpret_indices_disk(A, r::Tuple{AbstractArray{<:Bool}})
   ba = r[1]
-  if ndims(A)==ndims(ba)
+  if length(A)==ndims(ba)
     inds = getbb(ba)
     resh = a -> a[view(ba,inds...)]
     return inds, resh
@@ -176,6 +185,9 @@ _convert_index(i::Integer, s::Integer) = i:i
 _convert_index(i::AbstractVector, s::Integer) = i
 _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 
+get_size2(a,v) = get_size2(resizable_indices(a), size(a), size(v))
+get_size2(ri, a,v) = ntuple(i->in(i,ri) ? v[i] : a[i], length(a))
+
 macro implement_getindex(t)
 quote
 function Base.getindex(a::$t,i...)
@@ -196,7 +208,8 @@ Base.setindex!(a::$t{<:Any,N}, v, i...) where N =
 #Special care must be taken for logical indexing, we can not avoid reading the data
 #before writing
 function Base.setindex!(a::$t,v::AbstractArray,i::AbstractArray{<:Bool})
-  inds, trans = interpret_indices_disk(a,(i,))
+  s = get_size2(a, v)
+  inds, trans = interpret_indices_disk(s,(i,))
   data = Array{eltype(a)}(undef, map(length,inds)...)
   readblock!(a,data,inds...)
 

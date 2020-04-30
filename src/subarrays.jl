@@ -12,12 +12,13 @@ function Base.view(a::SubDiskArray,i...)
 end
 function readblock!(a::SubDiskArray,aout,i::OrdinalRange...)
   pinds = parentindices(view(a.v,i...))
-  inds,resh = interpret_indices_disk(parent(a.v),pinds)
+  inds,resh = interpret_indices_disk(size(parent(a.v)),pinds)
   readblock!(parent(a.v),reshape(aout,map(length,inds)...),inds...)
 end
 function writeblock!(a::SubDiskArray,v,i::OrdinalRange...)
   pinds = parentindices(view(a.v,i...))
-  inds,resh = interpret_indices_disk(parent(a.v),pinds)
+  s = get_size2(parent(a.v), v)
+  inds,resh = interpret_indices_disk(s,pinds)
   writeblock!(parent(a.v),reshape(v,map(length,inds)...),inds...)
 end
 Base.size(a::SubDiskArray) = size(a.v)

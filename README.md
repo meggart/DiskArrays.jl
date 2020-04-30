@@ -67,7 +67,7 @@ function DiskArrays.writeblock!(a::PseudoDiskArray,v,i::AbstractUnitRange...)
   println("Writing to indices ", join(string.(i)," "))
   view(a.parent,i...) .= v
 end
-a = RangeArray(4,5,1)
+a = PseudoDiskArray(rand(4,5,1))
 ````
 ````
 Disk Array with size 10 x 9 x 1

@@ -1,4 +1,4 @@
-import Base.Broadcast: Broadcasted, AbstractArrayStyle, DefaultArrayStyle, Broadcasted, flatten
+import Base.Broadcast: Broadcasted, AbstractArrayStyle, DefaultArrayStyle, flatten
 toRanges(r::Tuple) = r
 toRanges(r::CartesianIndices) = r.indices
 

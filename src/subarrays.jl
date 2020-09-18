@@ -22,6 +22,7 @@ function writeblock!(a::SubDiskArray,v,i::OrdinalRange...)
 end
 Base.size(a::SubDiskArray) = size(a.v)
 eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a.v.parent),a.v)
+Base.parent(a::SubDiskArray) = a.v.parent
 function eachchunk_view(::Chunked, vv)
   pinds = parentindices(vv)
   iomit = findints(pinds)

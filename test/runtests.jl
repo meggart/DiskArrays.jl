@@ -156,12 +156,12 @@ end
 @testset "Index interpretation" begin
   import DiskArrays: DimsDropper, Reshaper
   a = zeros(3,3,1)
-  @test interpret_indices_disk(a, (:,2,:)) == ((Base.OneTo(3), 2:2, Base.OneTo(1)), DimsDropper{Tuple{Int64}}((2,)))
-  @test interpret_indices_disk(a, (1,2,:)) == ((1:1, 2:2, Base.OneTo(1)), DimsDropper{Tuple{Int64,Int64}}((1, 2)))
-  @test interpret_indices_disk(a, (1,2,2,1)) == ((1:1, 2:2, 2:2), DimsDropper{Tuple{Int64,Int64,Int64}}((1, 2, 3)))
-  @test interpret_indices_disk(a, (1,2,2,1)) == ((1:1, 2:2, 2:2), DimsDropper{Tuple{Int64,Int64,Int64}}((1, 2, 3)))
-  @test interpret_indices_disk(a, (:,1:2)) == ((Base.OneTo(3), 1:2, 1:1), DimsDropper{Tuple{Int64}}((3,)))
-  @test interpret_indices_disk(a, (:,)) == ((Base.OneTo(3), Base.OneTo(3), Base.OneTo(1)), DiskArrays.Reshaper{Int64}(9))
+  @test interpret_indices_disk(a, (:,2,:)) == ((Base.OneTo(3), 2:2, Base.OneTo(1)), DimsDropper{Tuple{Int}}((2,)))
+  @test interpret_indices_disk(a, (1,2,:)) == ((1:1, 2:2, Base.OneTo(1)), DimsDropper{Tuple{Int,Int}}((1, 2)))
+  @test interpret_indices_disk(a, (1,2,2,1)) == ((1:1, 2:2, 2:2), DimsDropper{Tuple{Int,Int,Int}}((1, 2, 3)))
+  @test interpret_indices_disk(a, (1,2,2,1)) == ((1:1, 2:2, 2:2), DimsDropper{Tuple{Int,Int,Int}}((1, 2, 3)))
+  @test interpret_indices_disk(a, (:,1:2)) == ((Base.OneTo(3), 1:2, 1:1), DimsDropper{Tuple{Int}}((3,)))
+  @test interpret_indices_disk(a, (:,)) == ((Base.OneTo(3), Base.OneTo(3), Base.OneTo(1)), DiskArrays.Reshaper{Int}(9))
 end
 
 @testset "AbstractDiskArray getindex" begin

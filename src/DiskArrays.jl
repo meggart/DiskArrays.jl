@@ -60,6 +60,10 @@ function getindex_disk(a, i...)
   readblock!(a,data,inds...)
   trans(data)
 end
+
+setindex_disk!(a::AbstractDiskArray{T},v::T,i...) where T<:AbstractArray = 
+  setindex_disk!(a,[v],i...)
+  
 function setindex_disk!(a::AbstractDiskArray,v::AbstractArray,i...)
   inds, trans = interpret_indices_disk(a,i)
   data = reshape(v,map(length,inds))

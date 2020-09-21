@@ -10,18 +10,20 @@ struct ReshapedDiskArray{T,N,P<:AbstractArray,M} <: AbstractDiskArray{T,N}
 end
 Base.size(r::ReshapedDiskArray) = r.newsize
 haschunks(a::ReshapedDiskArray) = haschunks(a.parent)
-eachchunk(a::ReshapedDiskArray{<:Any,N}) where N = map(eachchunk(a.parent)) do j
-    r = toRanges(j)
-    inow::Int = 0
-    ntuple(N) do i
-        if i in a.keepdim
-            inow+=1
-            r[inow]
-        else
-            1:1
-        end
-    end::NTuple{N,UnitRange{Int}}
+function eachchunk(a::ReshapedDiskArray{<:Any,N}) where N
+  pchunks = eachchunk(a.parent)
+  inow::Int=0
+  outchunks = ntuple(N) do idim
+    if in(idim,a.keepdim)
+      inow+=1
+      pchunks.chunksize[inow],pchunks.offset[inow]
+    else
+      (1,0)
+    end
+  end
+  GridChunks(a,first.(outchunks), offset=last.(outchunks))
 end
+
 function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i::OrdinalRange...)
   inew = tuple_tuple_getindex(i,a.keepdim)
   DiskArrays.readblock!(a.parent,reshape(aout,map(length,inew)),inew...)

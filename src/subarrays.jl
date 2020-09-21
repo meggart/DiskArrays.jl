@@ -7,9 +7,11 @@ function Base.view(a::AbstractDiskArray,i...)
   i2 = replace_colon.(size(a),i)
   SubDiskArray(SubArray(a,i2))
 end
+Base.view(a::AbstractDiskArray, i::CartesianIndices) = view(a,i.indices...)
 function Base.view(a::SubDiskArray,i...)
   SubDiskArray(view(a.v,i...))
 end
+Base.view(a::SubDiskArray, i::CartesianIndices) = view(a,i.indices...)
 function readblock!(a::SubDiskArray,aout,i::OrdinalRange...)
   pinds = parentindices(view(a.v,i...))
   inds,resh = interpret_indices_disk(parent(a.v),pinds)
@@ -27,6 +29,7 @@ function eachchunk_view(::Chunked, vv)
   pinds = parentindices(vv)
   iomit = findints(pinds)
   chunksparent = eachchunk(parent(vv))
+  #TODO this currently only works if the parent chunks are GridChunks, should be generalized in the future
   parentoffset, parentsize = chunksparent.offset, chunksparent.chunksize
   offsets = ([mod1(first(pinds[i]),parentsize[i])+parentoffset[i]-1 for i in 1:length(pinds) if !in(i,iomit)]...,)
   newcs = ([parentsize[i] for i in 1:length(pinds) if !in(i,iomit)]...,)

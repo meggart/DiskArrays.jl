@@ -229,4 +229,16 @@ import Base.PermutedDimsArrays.invperm
   a_disk1 = permutedims(_DiskArray(rand(9,2,10), chunksize=(3,2,5)),p)
   test_broadcast(a_disk1)
 end
+
+@testset "Unchunked String arrays" begin
+  a = string.(reshape(1:100000,200,500));
+
+  DiskArrays.default_chunk_size[] = 100
+  @test DiskArrays.estimate_chunksize(a) == (200,500)
+  DiskArrays.default_chunk_size[] = 1
+  @test DiskArrays.estimate_chunksize(a) == (200,50)
+  DiskArrays.fallback_element_size[] = 200
+  @test DiskArrays.estimate_chunksize(a) == (200,25)
+end
+
 end

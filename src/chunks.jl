@@ -49,6 +49,10 @@ end
 #Define the approx default maximum chunk size (in MB)
 const default_chunk_size = Ref(100)
 
+#Define a fallback element size for arrays to determine a where elements have unknown
+#size like strings. Here we set this to 100 (bytes) although this might go terribly wrong
+const fallback_element_size = Ref(100)
+
 #Here we implement a fallback chunking for a DiskArray although this should normally
 #be over-ridden by the package that implements the interface
 
@@ -62,7 +66,18 @@ struct Unchunked end
 function haschunks end
 haschunks(x) = Unchunked()
 
-estimate_chunksize(a::AbstractArray) = estimate_chunksize(size(a), sizeof(eltype(a)))
+function element_size(a::AbstractArray) 
+  if isbitstype(eltype(a))
+    return sizeof(eltype(a))
+  elseif isbitstype(Base.nonmissingtype(eltype(a)))
+    return sizeof(Base.nonmissingtype(eltype(a)))
+  else
+    @warn "Can not determine size of element type. Using DiskArrays.fallback_element_size[] = $(fallback_element_size[]) bytes"
+    return fallback_element_size[]
+  end
+end
+
+estimate_chunksize(a::AbstractArray) = estimate_chunksize(size(a), element_size(a))
 function estimate_chunksize(s, si)
   ii = searchsortedfirst(cumprod(collect(s)),default_chunk_size[]*1e6/si)
   ntuple(length(s)) do idim

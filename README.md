@@ -5,8 +5,8 @@
 ![Lifecycle](https://img.shields.io/badge/lifecycle-retired-orange.svg)
 ![Lifecycle](https://img.shields.io/badge/lifecycle-archived-red.svg)
 ![Lifecycle](https://img.shields.io/badge/lifecycle-dormant-blue.svg) -->
-[![Build Status](https://travis-ci.com/meggart/DiskArrays.jl.svg?branch=master)](https://travis-ci.com/meggart/DiskArrays.jl)
-[![codecov.io](http://codecov.io/github/meggart/DiskArrays.jl/coverage.svg?branch=master)](http://codecov.io/github/meggart/DiskArrays.jl?branch=master)
+[![Build Status][ci-img]][ci-url]
+[![codecov.io][codecov-img]][codecov-url]
 
 This package is an attempt to collect utilities for working with n-dimensional array-like data
 structures that do not have considerable overhead for single read operations. Most important
@@ -168,3 +168,7 @@ the desired range.
 There are arrays that live on disk but which are not split into rectangular chunks, so that the `haschunks` trait returns `Unchunked()`. In order to still enable broadcasting and reductions for these arrays, a chunk size will be estimated in a way that a certain memory limit per chunk is not exceeded. This memory limit defaults to 100MB and can be modified by changing `DiskArrays.default_chunk_size[]`. Then a chunk size is computed based on the element size of the array. However, there are cases where the size of the element type is undefined, e.g. for Strings or variable-length vectors. In these cases one can overload the `DiskArrays.element_size` function for certain container types which returns an approximate element size (in bytes). Otherwise the size of an element will simply be assumed to equal the value stored in `DiskArrays.fallback_element_size` which defaults to 100 bytes. 
 
 
+[ci-img]: https://github.com/meggart/DiskArrays.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/meggart/DiskArrays.jl/actions?query=workflow%3ACI
+[codecov-img]: http://codecov.io/github/meggart/DiskArrays.jl/coverage.svg?branch=master
+[codecov-url]: (http://codecov.io/github/meggart/DiskArrays.jl?branch=master)

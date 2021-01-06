@@ -231,18 +231,32 @@ import Base.PermutedDimsArrays.invperm
 end
 
 @testset "Unchunked String arrays" begin
-  a = string.(reshape(1:100000,200,500));
+  a = reshape(1:200000,200,1000)
+  b = string.(a)
+  c = collect(Union{Int,Missing},a)
 
   DiskArrays.default_chunk_size[] = 100
   DiskArrays.fallback_element_size[] = 100
-  @test DiskArrays.estimate_chunksize(a) == (200,500)
-  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,500))
+  @test DiskArrays.estimate_chunksize(a) == (200,1000)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,1000))
+  @test DiskArrays.estimate_chunksize(b) == (200,1000)
+  @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,1000))
+  @test DiskArrays.estimate_chunksize(c) == (200,1000)
+  @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,1000))
   DiskArrays.default_chunk_size[] = 1
-  @test DiskArrays.estimate_chunksize(a) == (200,50)
-  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,50))
-  DiskArrays.fallback_element_size[] = 200
-  @test DiskArrays.estimate_chunksize(a) == (200,25)
-  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,25))
+  @test DiskArrays.estimate_chunksize(a) == (200,625)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,625))
+  @test DiskArrays.estimate_chunksize(b) == (200,50)
+  @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,50))
+  @test DiskArrays.estimate_chunksize(c) == (200,625)
+  @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
+  DiskArrays.fallback_element_size[] = 1000
+  @test DiskArrays.estimate_chunksize(a) == (200,625)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,625))
+  @test DiskArrays.estimate_chunksize(b) == (200,5)
+  @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,5))
+  @test DiskArrays.estimate_chunksize(c) == (200,625)
+  @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
 end
 
 end

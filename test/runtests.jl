@@ -234,11 +234,15 @@ end
   a = string.(reshape(1:100000,200,500));
 
   DiskArrays.default_chunk_size[] = 100
+  DiskArrays.fallback_element_size[] = 100
   @test DiskArrays.estimate_chunksize(a) == (200,500)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,500))
   DiskArrays.default_chunk_size[] = 1
   @test DiskArrays.estimate_chunksize(a) == (200,50)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,50))
   DiskArrays.fallback_element_size[] = 200
   @test DiskArrays.estimate_chunksize(a) == (200,25)
+  @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,25))
 end
 
 end

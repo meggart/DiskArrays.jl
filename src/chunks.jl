@@ -47,10 +47,13 @@ function Base.iterate(g::GridChunks, state)
 end
 
 #Define the approx default maximum chunk size (in MB)
+"The target chunk size for processing for unchunked arrays in MB, defaults to 100MB"
 const default_chunk_size = Ref(100)
 
-#Define a fallback element size for arrays to determine a where elements have unknown
-#size like strings. Here we set this to 100 (bytes) although this might go terribly wrong
+"""
+A fallback element size for arrays to determine a where elements have unknown
+size like strings. Defaults to 100MB
+"""
 const fallback_element_size = Ref(100)
 
 #Here we implement a fallback chunking for a DiskArray although this should normally
@@ -66,6 +69,13 @@ struct Unchunked end
 function haschunks end
 haschunks(x) = Unchunked()
 
+"""
+    element_size(a::AbstractArray)
+
+Returns the approximate size of an element of a in bytes. This falls back to calling `sizeof` on 
+the element type or to the value stored in `DiskArrays.fallback_element_size`. Methods can be added for 
+custom containers. 
+"""
 function element_size(a::AbstractArray) 
   if isbitstype(eltype(a))
     return sizeof(eltype(a))

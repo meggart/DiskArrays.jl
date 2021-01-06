@@ -162,3 +162,9 @@ There are situations where one wants to read every other value along a certain a
 In this case a backend can define `readblock!(a,aout,r::OrdinalRange...)` and the respective `writeblock`
 method which will overwrite the fallback behavior that would read the whol block of data and only return
 the desired range.
+
+## Arrays that do not implement eachchunk
+
+There are arrays that live on disk but which are not split into rectangular chunks, so that the `haschunks` trait returns `Unchunked()`. In order to still enable broadcasting and reductions for these arrays, a chunk size will be estimated in a way that a certain memory limit per chunk is not exceeded. This memory limit defaults to 100MB and can be modified by changing `DiskArrays.default_chunk_size[]`. Then a chunk size is computed based on the element size of the array. However, there are cases where the size of the element type is undefined, e.g. for Strings or variable-length vectors. In these cases one can overload the `DiskArrays.element_size` function for certain container types which returns an approximate element size (in bytes). Otherwise the size of an element will simply be assumed to equal the value stored in `DiskArrays.fallback_element_size` which defaults to 100 bytes. 
+
+

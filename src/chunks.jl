@@ -59,6 +59,7 @@ const fallback_element_size = Ref(100)
 #Here we implement a fallback chunking for a DiskArray although this should normally
 #be over-ridden by the package that implements the interface
 
+eachchunk(f, a::AbstractArray) = f(eachchunk(a))
 function eachchunk(a::AbstractArray)
   cs = estimate_chunksize(a)
   GridChunks(a,cs)

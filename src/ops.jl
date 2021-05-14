@@ -85,19 +85,22 @@ macro implement_mapreduce(t)
     end
     function Base.mapreducedim!(f, op, R::AbstractArray, A::$t)
       sR = size(R)
-      foreach(eachchunk(A)) do cI
-        a = A[toRanges(cI)...]
-        ainds = map((cinds, arsize)->arsize==1 ? Base.OneTo(1) : cinds, toRanges(cI),size(R))
-        #Maybe the view into R here is problematic and a copy would be faster
-        Base.mapreducedim!(f,op,view(R,ainds...),a)
+      eachchunk(A) do cc
+        foreach(cc) do cI
+          a = A[toRanges(cI)...]
+          ainds = map((cinds, arsize)->arsize==1 ? Base.OneTo(1) : cinds, toRanges(cI),size(R))
+          #Maybe the view into R here is problematic and a copy would be faster
+          Base.mapreducedim!(f,op,view(R,ainds...),a)
+        end
       end
       R
     end
 
     function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t)
-      cc = eachchunk(itr)
-      isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
-      Base.mapfoldl_impl(f,op,nt,itr,cc)
+      eachchunk(itr) do cc
+          isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
+          Base.mapfoldl_impl(f,op,nt,itr,cc)
+      end
     end
     function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t, cc)
       y = first(cc)
@@ -120,9 +123,11 @@ macro implement_broadcast(t)
   quote
     #Broadcasting with a DiskArray on LHS
     function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
-      foreach(eachchunk(dest)) do c
-        ar = [bc[i] for i in CartesianIndices(toRanges(c))]
-        dest[toRanges(c)...] = ar
+      eachchunk(dest) do cc
+        foreach(cc) do c
+          ar = [bc[i] for i in CartesianIndices(toRanges(c))]
+          dest[toRanges(c)...] = ar
+        end
       end
       dest
     end

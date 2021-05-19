@@ -203,6 +203,14 @@ end
   test_broadcast(a_disk1)
 end
 
+@testset "Broadcast with length 1 final dim" begin
+  a_disk1 = _DiskArray(rand(10,9,1), chunksize=(5,3,1))
+  a_disk2 = _DiskArray(rand(1:10,1,9), chunksize=(1,3))
+  s = a_disk1 .+ a_disk2
+  @test DiskArrays.eachchunk(s) isa DiskArrays.GridChunks{3}
+  @test size(collect(s)) == (10, 9, 1)
+end
+
 @testset "Reshape" begin
   a = reshape(_DiskArray(reshape(1:20,4,5)),4,5,1)
   test_getindex(a)

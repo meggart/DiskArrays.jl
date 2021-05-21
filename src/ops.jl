@@ -52,7 +52,7 @@ function common_chunks(s,args...)
     allcs = map(ar->(eachchunk(ar).chunksize,eachchunk(ar).offset),chunkedars)
     tt = ntuple(N) do n
       csnow = filter(cs->length(cs[1])>=n && cs[1][n]>1,allcs)
-      isempty(csnow) && return 1
+      isempty(csnow) && return (1, 0)
       cs = (csnow[1][1][n],csnow[1][2][n])
       all(s->(s[1][n],s[2][n]) == cs,csnow) || error("Chunks do not align in dimension $n")
       return cs

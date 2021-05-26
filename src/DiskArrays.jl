@@ -90,7 +90,7 @@ function interpret_indices_disk(A, r::Tuple)
 end
 
 #Read the entire array and reshape to 1D in the end
-function interpret_indices_disk(A, r::Tuple{Colon})
+function interpret_indices_disk(A, ::Tuple{Colon})
   return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
 end
 
@@ -99,7 +99,6 @@ interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) =
 
 interpret_indices_disk(A, r::Tuple{<:CartesianIndices}) =
   interpret_indices_disk(A,r[1].indices)
-
 
 
 
@@ -120,7 +119,7 @@ function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractVector, C
   end
 end
 
-function interpret_indices_disk(A, r::Tuple{AbstractArray{<:Bool}})
+function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
   ba = r[1]
   if ndims(A)==ndims(ba)
     inds = getbb(ba)
@@ -131,6 +130,15 @@ function interpret_indices_disk(A, r::Tuple{AbstractArray{<:Bool}})
   else
     throw(BoundsError(A, r))
   end
+end
+
+function interpret_indices_disk(A, r::NTuple{1, AbstractVector})
+  mi,ma = getcartesianbb(A,r[1])
+  lininds = first(r)
+  inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
+  offs = LinearIndices(A)[mi] - 1
+  resh = a -> a[lininds .- offs]
+  inds, resh
 end
 
 
@@ -160,6 +168,9 @@ function getbb(ar::AbstractArray{Bool})
   inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
 end
 
+function getcartesianbb(ar, linearinds)
+  extrema(view(CartesianIndices(ar), linearinds))
+end
 
 #Some helper functions
 "For two given tuples return a truncated version of both so they have common length"

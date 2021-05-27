@@ -133,11 +133,13 @@ function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
 end
 
 function interpret_indices_disk(A, r::NTuple{1, AbstractVector})
-  mi,ma = getcartesianbb(A,r[1])
   lininds = first(r)
+  cartinds = CartesianIndices(A)
+  mi, ma = extrema(view(cartinds, lininds))
   inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
-  offs = LinearIndices(A)[mi] - 1
-  resh = a -> a[lininds .- offs]
+  resh = a -> map(lininds) do ii
+      a[cartinds[ii] - mi + oneunit(mi)]
+  end
   inds, resh
 end
 
@@ -166,10 +168,6 @@ function getbb(ar::AbstractArray{Bool})
     val ? ind : nothing
   end
   inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
-end
-
-function getcartesianbb(ar, linearinds)
-  extrema(view(CartesianIndices(ar), linearinds))
 end
 
 #Some helper functions

@@ -50,8 +50,13 @@ function test_getindex(a)
   m = falses(4,5,1)
   m[2,:,1] .= true
   @test a[m] == [2,6,10,14,18]
+  # Test linear indexing
+  @test a[11:15] == 11:15
+  @test a[20:-1:9] == 20:-1:9
+  @test a[[3, 5, 8]] == [3, 5, 8]
+  @test a[2:4:14] == [2,6,10,14]
   #Test that readblock was called exactly onces for every getindex
-  @test getindex_count(a) == 9
+  @test getindex_count(a) == 13
 end
 
 function test_setindex(a)

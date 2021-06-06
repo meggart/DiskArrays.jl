@@ -225,6 +225,8 @@ end
   test_view(a)
   a = data -> reshape(_DiskArray(data,chunksize=(5,4,2)),10,20,2,1)
   test_reductions(a)
+  a = reshape(_DiskArray(reshape(1:20,4,5)),4,5,1)
+  @test ReshapedDiskArray(a.parent, a.keepdim, a.newsize) === a
 end
 
 import Base.PermutedDimsArrays.invperm
@@ -241,6 +243,7 @@ import Base.PermutedDimsArrays.invperm
   test_reductions(a)
   a_disk1 = permutedims(_DiskArray(rand(9,2,10), chunksize=(3,2,5)),p)
   test_broadcast(a_disk1)
+  @test PermutedDiskArray(a_disk1.a) === a_disk1
 end
 
 @testset "Unchunked String arrays" begin

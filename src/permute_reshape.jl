@@ -3,7 +3,7 @@ import DiskArrays: splittuple
 #Reshaping is really not trivial, because the access pattern would completely change for reshaped arrays,
 #rectangles would not remain rectangles in the parent array. However, we can support the case where only
 #singleton dimensions are added, later we could allow more special cases like joining two dimensions to one
-struct ReshapedDiskArray{T,N,P<:AbstractArray,M} <: AbstractDiskArray{T,N}
+struct ReshapedDiskArray{T,N,P<:AbstractArray{T},M} <: AbstractDiskArray{T,N}
     parent::P
     keepdim::NTuple{M,Int}
     newsize::NTuple{N,Int}
@@ -58,7 +58,7 @@ end
 
 import Base: _throw_dmrs
 import Base.PermutedDimsArrays: genperm
-struct PermutedDiskArray{T,N,P<:PermutedDimsArray} <: AbstractDiskArray{T,N}
+struct PermutedDiskArray{T,N,P<:PermutedDimsArray{T,N}} <: AbstractDiskArray{T,N}
     a::P
 end
 function permutedims_disk(a,perm)

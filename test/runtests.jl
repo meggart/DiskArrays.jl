@@ -124,6 +124,7 @@ function test_broadcast(a_disk1)
   s = a_disk1 .+ a_disk2
   #Test lazy broadcasting
   @test s isa DiskArrays.BroadcastDiskArray
+  @test s === DiskArrays.BroadcastDiskArray(s.bc)
   @test getindex_count(a_disk1)==0
   @test setindex_count(a_disk1)==0
   @test getindex_count(a_disk2)==0

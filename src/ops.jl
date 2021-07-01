@@ -11,6 +11,10 @@ Base.BroadcastStyle(::DefaultArrayStyle{M},::ChunkStyle{N}) where {N,M}= ChunkSt
 struct BroadcastDiskArray{T,N,BC<:Broadcasted{<:ChunkStyle{N}}} <: AbstractDiskArray{T,N}
   bc::BC
 end
+function BroadcastDiskArray(bcf::B) where {B<:Broadcasted{<:ChunkStyle{N}}} where N
+  ElType = Base.Broadcast.combine_eltypes(bcf.f, bcf.args)
+  BroadcastDiskArray{ElType,N,B}(bcf)
+end
 Base.size(bc::BroadcastDiskArray) = size(bc.bc)
 function DiskArrays.readblock!(a::BroadcastDiskArray,aout,i::OrdinalRange...)
   argssub = map(arg->subsetarg(arg,i),a.bc.args)
@@ -23,9 +27,7 @@ function eachchunk(a::BroadcastDiskArray)
   GridChunks(a.bc,cs,offset=off)
 end
 function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where N
-  bcf = flatten(bc)
-  ElType = Base.Broadcast.combine_eltypes(bcf.f, bcf.args)
-  BroadcastDiskArray{ElType,N,typeof(bcf)}(bcf)
+  BroadcastDiskArray(flatten(bc))
 end
 Base.copy(a::BroadcastDiskArray) = copyto!(zeros(eltype(a),size(a)),a.bc)
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where N

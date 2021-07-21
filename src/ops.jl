@@ -62,7 +62,7 @@ function common_chunks(s,args...)
     return map(i->i[1],tt),map(i->i[2],tt)
   end
 end
-subsetarg(x::Number,a) = x
+subsetarg(x, a) = x
 function subsetarg(x::AbstractArray,a)
   ashort = maybeonerange(size(x),a)
   view(x,ashort...) #Maybe making a copy here would be faster, need to check...

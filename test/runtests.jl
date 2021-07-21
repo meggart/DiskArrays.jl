@@ -121,7 +121,7 @@ function test_broadcast(a_disk1)
   a_disk2 = _DiskArray(rand(1:10,1,9), chunksize=(1,3))
   a_mem   = reshape(1:2,1,1,2);
 
-  s = a_disk1 .+ a_disk2
+  s = a_disk1 .+ a_disk2 .* Ref(2) ./ (2,)
   #Test lazy broadcasting
   @test s isa DiskArrays.BroadcastDiskArray
   @test s === DiskArrays.BroadcastDiskArray(s.bc)
@@ -140,7 +140,7 @@ function test_broadcast(a_disk1)
   @test eltype(s) == Float64
   #And now do the computation with Array as a sink
   aout = zeros(10,9,2)
-  aout .= s2
+  aout .= s2 .* 2 ./ Ref(2)
   #Test if the result is correct
   @test aout == (trueparent(a_disk1) .+ trueparent(a_disk2))./a_mem
   @test getindex_count(a_disk1)==6

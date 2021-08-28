@@ -207,6 +207,12 @@ end
 @testset "Broadcast" begin
   a_disk1 = _DiskArray(rand(10,9,2), chunksize=(5,3,2))
   test_broadcast(a_disk1)
+  a = ones(10,9,2);
+  a_disk = _DiskArray(a, chunksize=(5,3,2));
+  tup = ntuple(x -> x, 10)
+  mat = reshape(1:90, 10, 9)
+  @test_throws DimensionMismatch a_disk .* tup |> collect
+  @test_throws DimensionMismatch a_disk .* mat |> collect
 end
 
 @testset "Broadcast with length 1 final dim" begin

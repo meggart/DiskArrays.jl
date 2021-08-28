@@ -62,9 +62,14 @@ function common_chunks(s,args...)
     return map(i->i[1],tt),map(i->i[2],tt)
   end
 end
-subsetarg(x, a) = x
-function subsetarg(x::AbstractArray,a)
-  ashort = maybeonerange(size(x),a)
+subsetarg(x, ranges) = x
+function subsetarg(x::Tuple, ranges)
+  length(x) !== 1 && length(ranges) !== 1 && throw(DimensionMismatch("DiskArrays can only broadcast a Tuple of length > 1 with a 1 dimensional Array"))
+  x
+end
+function subsetarg(x::AbstractArray,ranges)
+  (length(ranges) === ndims(x) || length(x) === 1) || throw(DimensionMismatch("Can only broadcast with arrays of matching size"))
+  ashort = maybeonerange(size(x),ranges)
   view(x,ashort...) #Maybe making a copy here would be faster, need to check...
 end
 repsingle(s,r) = s==1 ? (1:1) : r

@@ -217,6 +217,28 @@ end
   @test size(collect(s)) == (10, 9, 1)
 end
 
+@testset "Array methods" begin
+  a = collect(reshape(1:90,10,9))
+  a_disk = _DiskArray(a, chunksize=(5,3))
+  @test collect(a_disk) == a
+  @test Array(a_disk) == a
+  @testset "copyto" begin
+      x = zero(a); copyto!(x, a_disk)
+      @test x == a
+      copyto!(x, CartesianIndices((1:3, 1:2)), a_disk, CartesianIndices((8:10, 8:9)))
+  end
+
+  @testset "reverse" begin
+      @test collect(reverse(a_disk)) == reverse(a)
+      @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)
+      @test collect(rotl90(a_disk)) == rotl90(a)
+      @test collect(rot180(a_disk)) == rot180(a)
+      @test collect(rotr90(a_disk)) == rotr90(a)
+  end
+
+  @test_broken vcat(a_disk, a_disk)
+end
+
 @testset "Reshape" begin
   a = reshape(_DiskArray(reshape(1:20,4,5)),4,5,1)
   test_getindex(a)

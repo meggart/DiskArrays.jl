@@ -1,6 +1,7 @@
 using DiskArrays
 using DiskArrays: ReshapedDiskArray, PermutedDiskArray
 using Test
+using Statistics
 
 #Define a data structure that can be used for testing
 struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
@@ -215,6 +216,36 @@ end
   s = a_disk1 .+ a_disk2
   @test DiskArrays.eachchunk(s) isa DiskArrays.GridChunks{3}
   @test size(collect(s)) == (10, 9, 1)
+end
+
+@testset "Array methods" begin
+  a = collect(reshape(1:90,10,9))
+  a_disk = _DiskArray(a, chunksize=(5,3))
+  @test collect(a_disk) == a
+  @test Array(a_disk) == a
+  @testset "copyto" begin
+      x = zero(a); copyto!(x, a_disk)
+      @test x == a
+      copyto!(x, CartesianIndices((1:3, 1:2)), a_disk, CartesianIndices((8:10, 8:9)))
+  end
+
+  @test collect(reverse(a_disk)) == reverse(a)
+  @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)
+  @test replace(a_disk, 1=>2) == replace(a, 1=>2)
+  @test rotr90(a_disk) == rotr90(a)
+  @test rotl90(a_disk) == rotl90(a)
+  @test rot180(a_disk) == rot180(a)
+  @test extrema(a_disk) == extrema(a)
+  @test mean(a_disk) == mean(a)
+  @test mean(a_disk; dims=1) == mean(a; dims=1)
+  @test std(a_disk) == std(a)
+  @test median(a_disk) == median(a)
+  @test median(a_disk; dims=1) == median(a; dims=1) # Works but very slow
+  @test median(a_disk; dims=2) == median(a; dims=2) # Works but very slow
+  @test_broken vcat(a_disk, a_disk) == vcat(a, a) # Wrong answer because `iterate` is broken
+  @test_broken hcat(a_disk, a_disk) == hcat(a, a) # Wrong answer because `iterate` is broken
+  @test_broken cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3) # Wrong answer because `iterate` is broken
+  @test_broken circshift(a_disk, 2) == circshift(a, 2) # This one is super weird. The size changes.
 end
 
 @testset "Reshape" begin

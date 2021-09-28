@@ -227,6 +227,7 @@ function Base.show(io::IO, X::AbstractDiskArray)
   println(io, "Disk Array with size ", join(size(X)," x "))
 end
 
+include("array.jl")
 include("chunks.jl")
 include("ops.jl")
 include("iterator.jl")
@@ -243,6 +244,7 @@ quote
     @implement_iteration $t
     @implement_mapreduce $t
     @implement_reshape $t
+    @implement_array_methods $t
     @implement_permutedims $t
   end
 end

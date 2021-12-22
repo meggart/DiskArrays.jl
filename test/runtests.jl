@@ -259,6 +259,9 @@ end
   test_reductions(a)
   a = reshape(_DiskArray(reshape(1:20,4,5)),4,5,1)
   @test ReshapedDiskArray(a.parent, a.keepdim, a.newsize) === a
+  # Reshape with existing trailing 1s works
+  a = reshape(_DiskArray(reshape(1:100,5,5,2,2,1,1)),5,5,2,2,1,1,1)
+  @test a[5,5,2,2,1,1,1] == 100
 end
 
 import Base.PermutedDimsArrays.invperm

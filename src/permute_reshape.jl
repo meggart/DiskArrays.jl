@@ -42,14 +42,16 @@ function reshape_disk(parent, dims)
     ndims(parent) > length(dims) && error("For DiskArrays, reshape is restricted to adding singleton dimensions")
     prod(dims) == n || _throw_dmrs(n, "size", dims)
     ipassed::Int=0
-    s = size(parent)
-    keepdim = map(s) do snow
+    keepdim = map(size(parent)) do s
         while true
             ipassed += 1
             d = dims[ipassed]
             if d>1
-                d != snow && error("For DiskArrays, reshape is restricted to adding singleton dimensions")
+                d != s && error("For DiskArrays, reshape is restricted to adding singleton dimensions")
                 return ipassed
+            else
+                # For existing trailing 1s
+                d == s == 1 && return ipassed
             end
         end
     end

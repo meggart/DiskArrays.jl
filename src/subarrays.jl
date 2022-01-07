@@ -29,11 +29,8 @@ function eachchunk_view(::Chunked, vv)
   pinds = parentindices(vv)
   iomit = findints(pinds)
   chunksparent = eachchunk(parent(vv))
-  #TODO this currently only works if the parent chunks are GridChunks, should be generalized in the future
-  parentoffset, parentsize = chunksparent.offset, chunksparent.chunksize
-  offsets = ([mod1(first(pinds[i]),parentsize[i])+parentoffset[i]-1 for i in 1:length(pinds) if !in(i,iomit)]...,)
-  newcs = ([parentsize[i] for i in 1:length(pinds) if !in(i,iomit)]...,)
-  GridChunks(vv,newcs,offset = offsets)
+  newchunks = [subsetchunks(chunksparent.chunks[i], pinds[i]) for i in 1:length(pinds) if !in(i,iomit)]
+  GridChunks(newchunks...)
 end
 eachchunk_view(::Unchunked, a) = GridChunks(a,estimate_chunksize(a))
 haschunks(a::SubDiskArray) = haschunks(parent(a.v))

@@ -160,6 +160,47 @@ function test_broadcast(a_disk1)
   @test getindex_count(a_disk2)==18
 end
 
+@testset "GridChunks object" begin
+  using DiskArrays: GridChunks, RegularChunks, IrregularChunks, subsetchunks
+  a1 = RegularChunks(5,2,10)
+  @test_throws BoundsError a1[0]
+  @test_throws BoundsError a1[4]
+  @test a1[1] == 1:3
+  @test a1[2] == 4:8
+  @test a1[3] == 9:10
+  @test length(a1) == 3
+  @test size(a1) == (3,)
+  v1 = subsetchunks(a1,1:10)
+  v2 = subsetchunks(a1,4:9)
+  @test v1 === a1
+  @test v2 === RegularChunks(5,0,6)
+  a2 = RegularChunks(2,0,20)
+  @test a2[1] == 1:2
+  @test a2[2] == 3:4
+  @test a2[10] == 19:20
+  @test length(a2) == 10
+  @test size(a2) == (10,)
+  @test_throws BoundsError a2[0]
+  @test_throws BoundsError a2[11]
+  b1 = IrregularChunks(chunksizes = [3,3,4,3,3])
+  @test b1[1] == 1:3
+  @test b1[2] == 4:6
+  @test b1[3] == 7:10
+  @test b1[4] == 11:13
+  @test b1[5] == 14:16
+  @test length(b1) == 5
+  @test size(b1) == (5,)
+  @test_throws BoundsError b1[0]
+  @test_throws BoundsError b1[6]
+  @test subsetchunks(b1, 1:15) == IrregularChunks(chunksizes = [3,3,4,3,2])
+  @test subsetchunks(b1, 3:10) == IrregularChunks(chunksizes = [1,3,4])
+  gridc = GridChunks(a1,a2,b1)
+  @test gridc[1,1,1] == (1:3, 1:2,1:3)
+  @test gridc[2,2,2] == (4:8, 3:4,4:6)
+  @test_throws BoundsError gridc[4,1,1]
+  @test size(gridc) == (3,10,5)
+end
+
 @testset "Index interpretation" begin
   import DiskArrays: DimsDropper, Reshaper
   a = zeros(3,3,1)
@@ -288,25 +329,25 @@ end
 
   DiskArrays.default_chunk_size[] = 100
   DiskArrays.fallback_element_size[] = 100
-  @test DiskArrays.estimate_chunksize(a) == (200,1000)
+  @test DiskArrays.estimate_chunksize(a) == DiskArrays.GridChunks(a,(200,1000))
   @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,1000))
-  @test DiskArrays.estimate_chunksize(b) == (200,1000)
+  @test DiskArrays.estimate_chunksize(b) == DiskArrays.GridChunks(b,(200,1000))
   @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,1000))
-  @test DiskArrays.estimate_chunksize(c) == (200,1000)
+  @test DiskArrays.estimate_chunksize(c) == DiskArrays.GridChunks(c,(200,1000))
   @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,1000))
   DiskArrays.default_chunk_size[] = 1
-  @test DiskArrays.estimate_chunksize(a) == (200,625)
+  @test DiskArrays.estimate_chunksize(a) == DiskArrays.GridChunks(a,(200,625))
   @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,625))
-  @test DiskArrays.estimate_chunksize(b) == (200,50)
+  @test DiskArrays.estimate_chunksize(b) == DiskArrays.GridChunks(b,(200,50))
   @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,50))
-  @test DiskArrays.estimate_chunksize(c) == (200,625)
+  @test DiskArrays.estimate_chunksize(c) == DiskArrays.GridChunks(c,(200,625))
   @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
   DiskArrays.fallback_element_size[] = 1000
-  @test DiskArrays.estimate_chunksize(a) == (200,625)
+  @test DiskArrays.estimate_chunksize(a) == DiskArrays.GridChunks(a,(200,625))
   @test DiskArrays.eachchunk(a) == DiskArrays.GridChunks(a,(200,625))
-  @test DiskArrays.estimate_chunksize(b) == (200,5)
+  @test DiskArrays.estimate_chunksize(b) == DiskArrays.GridChunks(b,(200,5))
   @test DiskArrays.eachchunk(b) == DiskArrays.GridChunks(b,(200,5))
-  @test DiskArrays.estimate_chunksize(c) == (200,625)
+  @test DiskArrays.estimate_chunksize(c) == DiskArrays.GridChunks(c,(200,625))
   @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
 end
 

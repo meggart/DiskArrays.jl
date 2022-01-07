@@ -238,8 +238,6 @@ end
   test_view(a)
 end
 
-# The remaing tests only work for Julia >= 1.3
-if VERSION >= v"1.3.0"
 import Statistics: mean
 @testset "Reductions" begin
   a = data -> _DiskArray(data,chunksize=(5,4,2))
@@ -351,4 +349,3 @@ end
   @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
 end
 
-end

@@ -37,8 +37,9 @@ function subsetchunks(r::RegularChunks, subs::AbstractRange)
     return RegularChunks(r.cs, newoffset, r.s)
   end
 end
-approx_cs(r::RegularChunks) = r.cs
-max_cs(r::RegularChunks) = r.cs
+approx_chunksize(r::RegularChunks) = r.cs
+grid_offset(r::RegularChunks) = r.offset
+max_chunksize(r::RegularChunks) = r.cs
 
 """
     IrregularChunks
@@ -63,8 +64,9 @@ function subsetchunks(r::IrregularChunks, subs::UnitRange)
   offsnew .= offsnew .- first(offsnew)
   IrregularChunks(offsnew)
 end
-approx_cs(r::IrregularChunks) = round(Int,mean(diff(r.offsets)))
-max_cs(r::IrregularChunks) = maximum(diff(r.offsets))
+approx_chunksize(r::IrregularChunks) = round(Int,sum(diff(r.offsets))/(length(r.offsets)-1))
+grid_offset(r::IrregularChunks) = 0
+max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
 
 
 """
@@ -95,6 +97,33 @@ function GridChunks(a::Tuple, chunksize; offset = (_->0).(a))
   end
   GridChunks(gcs)
 end
+
+"""
+    approx_chunksize(g::GridChunks)
+
+Returns the aproximate chunk size of the grid. For the dimension with regular chunks, this will be the exact chunk size
+while for dimensions with irregular chunks this is the average chunks size. Useful for downstream applications that want to
+distribute computations and want to know about chunk sizes. 
+"""
+approx_chunksize(g::GridChunks) = approx_chunksize.(g.chunks)
+
+"""
+    grid_offset(g::GridChunks)
+
+Returns the offset of the grid for the first chunks. Expect this value to be non-zero for views into regular-gridded
+arrays. Useful for downstream applications that want to distribute computations and want to know about chunk sizes. 
+"""
+grid_offset(g::GridChunks) = grid_offset.(g.chunks)
+
+"""
+    max_chunksize(g::GridChunks)
+
+Returns the maximum chunk size of an array for each dimension. Useful for pre-allocating arrays to make sure they can hold
+a chunk of data. 
+"""
+max_chunksize(g::GridChunks) = max_chunksize.(g.chunks)
+
+
 
 #Define the approx default maximum chunk size (in MB)
 "The target chunk size for processing for unchunked arrays in MB, defaults to 100MB"

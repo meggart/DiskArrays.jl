@@ -199,6 +199,9 @@ end
   @test gridc[2,2,2] == (4:8, 3:4,4:6)
   @test_throws BoundsError gridc[4,1,1]
   @test size(gridc) == (3,10,5)
+  @test DiskArrays.approx_chunksize(gridc) == (5,2,3)
+  @test DiskArrays.grid_offset(gridc) == (2,0,0)
+  @test DiskArrays.max_chunksize(gridc) == (5,2,4)
 end
 
 @testset "Index interpretation" begin

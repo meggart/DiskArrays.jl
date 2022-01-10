@@ -48,23 +48,9 @@ function common_chunks(s,args...)
     totalsize = sum(sizeof ∘ eltype, args)
     return estimate_chunksize(s,totalsize)
   else
-
-    #allcs = map(ar->(eachchunk(ar).chunksize,eachchunk(ar).offset),chunkedars)
-    
-    # tt = ntuple(N) do n
-    #   csnow = filter(cs->length(cs[1])>=n && cs[1][n]>1,allcs)
-    #   isempty(csnow) && return (1, 0)
-    #   cs = (csnow[1][1][n],csnow[1][2][n])
-    #   all(s->(s[1][n],s[2][n]) == cs,csnow) || error("Chunks do not align in dimension $n")
-    #   return cs
-    # end
-    # return map(i->i[1],tt),map(i->i[2],tt)
-
     allcs = eachchunk.(chunkedars)
     tt = ntuple(N) do n
-      
       csnow = filter(cs->ndims(cs)>=n && first(first(cs.chunks[n]))<last(last(cs.chunks[n])),allcs)
-
       isempty(csnow) && return RegularChunks(1,0,s[n])
       cs = first(csnow).chunks[n]
       all(s->s.chunks[n] == cs,csnow) || error("Chunks do not align in dimension $n")

@@ -27,7 +27,12 @@ Base.size(r::RegularChunks) = (size(r,1),)
 function subsetchunks(r::RegularChunks, subs::AbstractUnitRange)
   snew = length(subs)
   newoffset = mod(first(subs)-1+r.offset,r.cs)
-  RegularChunks(r.cs, newoffset, snew)
+  r = RegularChunks(r.cs, newoffset, snew)
+  #In case the new chunk is trivial and has length 1, we shorten the chunk size
+  if length(r) == 1
+    r = RegularChunks(snew, 0, snew)
+  end
+  r
 end
 function subsetchunks(r::RegularChunks, subs::AbstractRange)
   #This is a method only to make "reverse" work and should error for all other cases

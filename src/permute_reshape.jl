@@ -16,12 +16,12 @@ function eachchunk(a::ReshapedDiskArray{<:Any,N}) where N
   outchunks = ntuple(N) do idim
     if in(idim,a.keepdim)
       inow+=1
-      pchunks.chunksize[inow],pchunks.offset[inow]
+      pchunks.chunks[inow]
     else
-      (1,0)
+      RegularChunks(1,0,size(a,idim))
     end
   end
-  GridChunks(a,first.(outchunks), offset=last.(outchunks))
+  GridChunks(outchunks...)
 end
 
 function DiskArrays.readblock!(a::ReshapedDiskArray,aout,i::OrdinalRange...)
@@ -76,7 +76,7 @@ _getiperm(::PermutedDimsArray{<:Any,<:Any,<:Any,iperm}) where iperm = iperm
 function eachchunk(a::PermutedDiskArray)
   cc = eachchunk(a.a.parent)
   perm = _getperm(a.a)
-  GridChunks(a,genperm(cc.chunksize,perm),offset=genperm(cc.offset,perm))
+  GridChunks(genperm(cc.chunks,perm)...)
 end
 function DiskArrays.readblock!(a::PermutedDiskArray,aout,i::OrdinalRange...)
   iperm = _getiperm(a)

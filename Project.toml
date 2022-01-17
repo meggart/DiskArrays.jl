@@ -1,10 +1,10 @@
 name = "DiskArrays"
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 authors = ["Fabian Gans <fgans@bgc-jena.mpg.de>"]
-version = "0.2.13"
+version = "0.3.0"
 
 [compat]
-julia = "1.0"
+julia = "1.6"
 
 [extras]
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"

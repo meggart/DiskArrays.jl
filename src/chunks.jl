@@ -5,46 +5,130 @@ Returns an iterator with `CartesianIndices` elements that mark the index range o
 """
 function eachchunk end
 
-struct GridChunks{N}
-    parentsize::NTuple{N,Int}
-    chunksize::NTuple{N,Int}
-    chunkgridsize::NTuple{N,Int}
-    offset::NTuple{N,Int}
+abstract type ChunkType <: AbstractVector{UnitRange} end
+
+"""
+    RegularChunks
+
+Defines chunking along a dimension where the chunks have constant size and a potential
+offset for the first chunk. The last chunk is truncated to fit the array size. 
+"""
+struct RegularChunks <: ChunkType
+    cs::Int
+    offset::Int
+    s::Int
 end
-GridChunks(a, chunksize; offset = (_->0).(size(a))) = GridChunks(Int.(size(a)), Int.(chunksize), Int.(getgridsize(size(a),chunksize,offset)),Int.(offset))
-GridChunks(a::Tuple, chunksize; offset = (_->0).(a)) = GridChunks(Int.(a), Int.(chunksize), Int.(getgridsize(a,chunksize,offset)),Int.(offset))
-function getgridsize(a,chunksize,offset)
-  map(a,chunksize,offset) do s,cs,of
-    fld1(s+of,cs)
+function Base.getindex(r::RegularChunks,i::Int) 
+  @boundscheck checkbounds(r, i)
+  max((i-1)*r.cs+1-r.offset,1):min(i*r.cs-r.offset, r.s)
+end
+Base.size(r::RegularChunks,_) = div(r.s + r.offset - 1,r.cs) +1
+Base.size(r::RegularChunks) = (size(r,1),)
+function subsetchunks(r::RegularChunks, subs::AbstractUnitRange)
+  snew = length(subs)
+  newoffset = mod(first(subs)-1+r.offset,r.cs)
+  r = RegularChunks(r.cs, newoffset, snew)
+  #In case the new chunk is trivial and has length 1, we shorten the chunk size
+  if length(r) == 1
+    r = RegularChunks(snew, 0, snew)
+  end
+  r
+end
+function subsetchunks(r::RegularChunks, subs::AbstractRange)
+  #This is a method only to make "reverse" work and should error for all other cases
+  if step(subs) == -1 && first(subs)==r.s && last(subs)==1
+    lastlen = length(last(r))
+    newoffset = r.cs-lastlen
+    return RegularChunks(r.cs, newoffset, r.s)
   end
 end
-function Base.show(io::IO, g::GridChunks)
-  print(io,"Regular ",join(g.chunksize,"x")," chunks over a ", join(g.parentsize,"x"), " array.")
+approx_chunksize(r::RegularChunks) = r.cs
+grid_offset(r::RegularChunks) = r.offset
+max_chunksize(r::RegularChunks) = r.cs
+
+"""
+    IrregularChunks
+
+Defines chunks along a dimension where chunk sizes are not constant but arbitrary
+"""
+struct IrregularChunks <: ChunkType
+  offsets::Vector{Int}
 end
-Base.size(g::GridChunks) = g.chunkgridsize
-Base.size(g::GridChunks, dim) = g.chunkgridsize[dim]
-Base.IteratorSize(::Type{GridChunks{N}}) where N = Base.HasShape{N}()
-Base.eltype(::Type{GridChunks{N}}) where N = CartesianIndices{N,NTuple{N,UnitRange{Int64}}}
-Base.length(c::GridChunks) = prod(size(c))
-@inline function _iterate(g,r)
-    if r === nothing
-        return nothing
-    else
-        ichunk, state = r
-        outinds = map(ichunk.I, g.chunksize, g.parentsize,g.offset) do ic, cs, ps, of
-            max((ic-1)*cs+1-of,1):min(ic*cs-of, ps)
-        end |> CartesianIndices
-        outinds, state
-    end
+function Base.getindex(r::IrregularChunks,i::Int) 
+  @boundscheck checkbounds(r, i)
+  (r.offsets[i]+1):r.offsets[i+1]
 end
-function Base.iterate(g::GridChunks)
-    r = iterate(CartesianIndices(g.chunkgridsize))
-    _iterate(g,r)
+Base.size(r::IrregularChunks) = (length(r.offsets)-1,)
+function subsetchunks(r::IrregularChunks, subs::UnitRange)
+  c1 = searchsortedfirst(r.offsets, first(subs))-1
+  c2 = searchsortedfirst(r.offsets, last(subs))
+  offsnew = r.offsets[c1:c2]
+  firstoffset = first(subs)-r.offsets[c1]-1
+  offsnew[end] = last(subs)
+  offsnew[2:end] .= offsnew[2:end] .- firstoffset
+  offsnew .= offsnew .- first(offsnew)
+  IrregularChunks(offsnew)
 end
-function Base.iterate(g::GridChunks, state)
-    r = iterate(CartesianIndices(g.chunkgridsize), state)
-    _iterate(g,r)
+approx_chunksize(r::IrregularChunks) = round(Int,sum(diff(r.offsets))/(length(r.offsets)-1))
+grid_offset(r::IrregularChunks) = 0
+max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
+
+
+"""
+    IrregularChunks(;chunksizes)
+
+Returns an IrregularChunks object for the given list of chunk sizes
+"""
+function IrregularChunks(;chunksizes)
+  offs = pushfirst!(cumsum(chunksizes),0)
+  #push!(offs,last(offs)+1)
+  IrregularChunks(offs)
 end
+
+
+struct GridChunks{N} <: AbstractArray{UnitRange,N}
+  chunks::Tuple{Vararg{ChunkType,N}}
+end
+function Base.getindex(g::GridChunks{N},i::Vararg{Int, N}) where N 
+  @boundscheck checkbounds(g, i...)
+  getindex.(g.chunks,i)
+end
+Base.size(g::GridChunks) = length.(g.chunks)
+GridChunks(ct::ChunkType...) = GridChunks(ct)
+GridChunks(a, chunksize; offset = (_->0).(size(a))) = GridChunks(size(a), chunksize; offset)
+function GridChunks(a::Tuple, chunksize; offset = (_->0).(a))
+  gcs = map(a,chunksize, offset) do s, cs, of
+      RegularChunks(cs,of,s)
+  end
+  GridChunks(gcs)
+end
+
+"""
+    approx_chunksize(g::GridChunks)
+
+Returns the aproximate chunk size of the grid. For the dimension with regular chunks, this will be the exact chunk size
+while for dimensions with irregular chunks this is the average chunks size. Useful for downstream applications that want to
+distribute computations and want to know about chunk sizes. 
+"""
+approx_chunksize(g::GridChunks) = approx_chunksize.(g.chunks)
+
+"""
+    grid_offset(g::GridChunks)
+
+Returns the offset of the grid for the first chunks. Expect this value to be non-zero for views into regular-gridded
+arrays. Useful for downstream applications that want to distribute computations and want to know about chunk sizes. 
+"""
+grid_offset(g::GridChunks) = grid_offset.(g.chunks)
+
+"""
+    max_chunksize(g::GridChunks)
+
+Returns the maximum chunk size of an array for each dimension. Useful for pre-allocating arrays to make sure they can hold
+a chunk of data. 
+"""
+max_chunksize(g::GridChunks) = max_chunksize.(g.chunks)
+
+
 
 #Define the approx default maximum chunk size (in MB)
 "The target chunk size for processing for unchunked arrays in MB, defaults to 100MB"
@@ -60,8 +144,7 @@ const fallback_element_size = Ref(100)
 #be over-ridden by the package that implements the interface
 
 function eachchunk(a::AbstractArray)
-  cs = estimate_chunksize(a)
-  GridChunks(a,cs)
+  estimate_chunksize(a)
 end
 
 struct Chunked end
@@ -90,7 +173,7 @@ end
 estimate_chunksize(a::AbstractArray) = estimate_chunksize(size(a), element_size(a))
 function estimate_chunksize(s, si)
   ii = searchsortedfirst(cumprod(collect(s)),default_chunk_size[]*1e6/si)
-  ntuple(length(s)) do idim
+  cs = ntuple(length(s)) do idim
     if idim<ii
       return s[idim]
     elseif idim>ii
@@ -100,4 +183,5 @@ function estimate_chunksize(s, si)
       return floor(Int,default_chunk_size[]*1e6/si/sbefore)
     end
   end
+  GridChunks(s,cs)
 end

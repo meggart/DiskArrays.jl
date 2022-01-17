@@ -23,8 +23,7 @@ end
 Base.broadcastable(bc::BroadcastDiskArray) = bc.bc
 haschunks(a::BroadcastDiskArray) = Chunked()
 function eachchunk(a::BroadcastDiskArray)
-  cs,off = common_chunks(size(a.bc),a.bc.args...)
-  GridChunks(a.bc,cs,offset=off)
+  common_chunks(size(a.bc),a.bc.args...)
 end
 function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where N
   BroadcastDiskArray(flatten(bc))
@@ -32,13 +31,12 @@ end
 Base.copy(a::BroadcastDiskArray) = copyto!(zeros(eltype(a),size(a)),a.bc)
 function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where N
   bcf = flatten(bc)
-  cs,off = common_chunks(size(bcf),dest,bcf.args...)
-  gcd = GridChunks(bcf,cs,offset=off)
+  gcd = common_chunks(size(bcf),dest,bcf.args...)
   foreach(gcd) do cnow
     #Possible optimization would be to use a LRU cache here, so that data has not
     #to be read twice in case of repeating indices
-    argssub = map(i->subsetarg(i,cnow.indices),bcf.args)
-    dest[cnow.indices...] .= bcf.f.(argssub...)
+    argssub = map(i->subsetarg(i,cnow),bcf.args)
+    dest[cnow...] .= bcf.f.(argssub...)
   end
   dest
 end
@@ -48,18 +46,17 @@ function common_chunks(s,args...)
   all(ar->isa(eachchunk(ar),GridChunks), chunkedars) || error("Currently only chunks of type GridChunks can be merged by broadcast")
   if isempty(chunkedars)
     totalsize = sum(sizeof ∘ eltype, args)
-    return (estimate_chunksize(s,totalsize),ntuple(zero,N))
+    return estimate_chunksize(s,totalsize)
   else
-
-    allcs = map(ar->(eachchunk(ar).chunksize,eachchunk(ar).offset),chunkedars)
+    allcs = eachchunk.(chunkedars)
     tt = ntuple(N) do n
-      csnow = filter(cs->length(cs[1])>=n && cs[1][n]>1,allcs)
-      isempty(csnow) && return (1, 0)
-      cs = (csnow[1][1][n],csnow[1][2][n])
-      all(s->(s[1][n],s[2][n]) == cs,csnow) || error("Chunks do not align in dimension $n")
+      csnow = filter(cs->ndims(cs)>=n && first(first(cs.chunks[n]))<last(last(cs.chunks[n])),allcs)
+      isempty(csnow) && return RegularChunks(1,0,s[n])
+      cs = first(csnow).chunks[n]
+      all(s->s.chunks[n] == cs,csnow) || error("Chunks do not align in dimension $n")
       return cs
     end
-    return map(i->i[1],tt),map(i->i[2],tt)
+    return GridChunks(tt...)
   end
 end
 subsetarg(x, a) = x

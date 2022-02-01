@@ -38,6 +38,7 @@ function DiskArrays.writeblock!(a::_DiskArray,v,i::AbstractUnitRange...)
   view(a.parent,i...) .= v
 end
 
+
 function test_getindex(a)
   @test a[2,3,1] == 10
   @test a[2,3] == 10
@@ -83,6 +84,7 @@ function test_setindex(a)
   @test trueparent(a)[[2,4],1:2,1] == [1 2; 5 6]
   @test setindex_count(a) == 8
 end
+
 
 function test_view(a)
   v = view(a,2:3,2:4,1)
@@ -195,6 +197,7 @@ end
   @test subsetchunks(b1, 1:15) == IrregularChunks(chunksizes = [3,3,4,3,2])
   @test subsetchunks(b1, 3:10) == IrregularChunks(chunksizes = [1,3,4])
   gridc = GridChunks(a1,a2,b1)
+  @test eltype(gridc) <: Tuple{UnitRange,UnitRange,UnitRange}
   @test gridc[1,1,1] == (1:3, 1:2,1:3)
   @test gridc[2,2,2] == (4:8, 3:4,4:6)
   @test_throws BoundsError gridc[4,1,1]
@@ -263,6 +266,11 @@ end
 @testset "Array methods" begin
   a = collect(reshape(1:90,10,9))
   a_disk = _DiskArray(a, chunksize=(5,3))
+  ei = eachindex(a_disk)
+  @test ei isa DiskArrays.BlockedIndices
+  @test length(ei) == 90
+  @test eltype(ei) == CartesianIndex{2}
+  @test_broken [aa for aa in a_disk] == a
   @test collect(a_disk) == a
   @test Array(a_disk) == a
   @testset "copyto" begin

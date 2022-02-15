@@ -32,5 +32,5 @@ function eachchunk_view(::Chunked, vv)
   newchunks = [subsetchunks(chunksparent.chunks[i], pinds[i]) for i in 1:length(pinds) if !in(i,iomit)]
   GridChunks(newchunks...)
 end
-eachchunk_view(::Unchunked, a) = GridChunks(a,estimate_chunksize(a))
+eachchunk_view(::Unchunked, a) = estimate_chunksize(a)
 haschunks(a::SubDiskArray) = haschunks(parent(a.v))

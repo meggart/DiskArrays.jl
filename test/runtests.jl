@@ -38,6 +38,19 @@ function DiskArrays.writeblock!(a::_DiskArray,v,i::AbstractUnitRange...)
   view(a.parent,i...) .= v
 end
 
+struct UnchunkedDiskArray{T,N,P<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
+  p::P
+end
+DiskArrays.haschunks(::UnchunkedDiskArray) = DiskArrays.Unchunked()
+Base.size(a::UnchunkedDiskArray) = size(a.p)
+function DiskArrays.readblock!(a::UnchunkedDiskArray,aout,i::AbstractUnitRange...)
+  ndims(a) == length(i) || error("Number of indices is not correct")
+  all(r->isa(r,AbstractUnitRange),i) || error("Not all indices are unit ranges")
+  #println("reading from indices ", join(string.(i)," "))
+  aout .= a.p[i...]
+end
+
+
 function test_getindex(a)
   @test a[2,3,1] == 10
   @test a[2,3] == 10
@@ -203,6 +216,13 @@ end
   @test DiskArrays.grid_offset(gridc) == (2,0,0)
   @test DiskArrays.max_chunksize(gridc) == (5,2,4)
 end
+
+@testset "Unchunked DiskArrays" begin
+  a = UnchunkedDiskArray(reshape(1:1000,(10,20,5)))
+  v = view(a,1:2,1,1:3)
+  @test v == [1 201 401; 2 202 402] 
+end
+
 
 @testset "Index interpretation" begin
   import DiskArrays: DimsDropper, Reshaper

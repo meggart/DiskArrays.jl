@@ -86,7 +86,7 @@ function IrregularChunks(;chunksizes)
 end
 
 
-struct GridChunks{N} <: AbstractArray{NTuple{N,UnitRange},N}
+struct GridChunks{N} <: AbstractArray{NTuple{N,UnitRange{Int64}},N}
   chunks::Tuple{Vararg{ChunkType,N}}
 end
 function Base.getindex(g::GridChunks{N},i::Vararg{Int, N}) where N 

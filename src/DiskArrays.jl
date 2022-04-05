@@ -1,5 +1,5 @@
 module DiskArrays
-export AbstractDiskArray, interpret_indices_disk
+export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
 
 """
 Abstract DiskArray type that can be inherited by Array-like data structures that
@@ -189,12 +189,22 @@ _convert_index(i::Integer, s::Integer) = i:i
 _convert_index(i::AbstractVector, s::Integer) = i
 _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 
+include("chunks.jl")
+
 macro implement_getindex(t)
-quote
-function Base.getindex(a::$t,i...)
-  getindex_disk(a,i...)
-end
-end
+  quote
+    function Base.getindex(a::$t,i...)
+      getindex_disk(a,i...)
+    end
+    function Base.getindex(a::$t,i::ChunkIndex)
+      cs = eachchunk(a)
+      inds = cs[i.I]
+      wrapchunk(i.chunktype,a[inds...],inds)
+    end
+    function DiskArrays.ChunkIndices(a::$t; offset=false) 
+      ChunkIndices(Base.OneTo.(size(eachchunk(a))),offset ? OffsetChunks() : OneBasedChunks())
+    end
+  end
 end
 
 macro implement_setindex(t)
@@ -228,7 +238,6 @@ function Base.show(io::IO, X::AbstractDiskArray)
 end
 
 include("array.jl")
-include("chunks.jl")
 include("ops.jl")
 include("iterator.jl")
 include("subarrays.jl")

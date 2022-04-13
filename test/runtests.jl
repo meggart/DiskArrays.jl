@@ -378,3 +378,34 @@ end
   @test DiskArrays.eachchunk(c) == DiskArrays.GridChunks(c,(200,625))
 end
 
+@testset "Mixed size chunks" begin
+    a1 = _DiskArray(zeros(24, 16), chunksize=(1, 1))
+    a2 = _DiskArray((2:25) * vec(1:16)', chunksize=(1, 2))
+    a3 = _DiskArray((3:26) * vec(1:16)', chunksize=(3, 4))
+    a4 = _DiskArray((4:27) * vec(1:16)', chunksize=(6, 8))
+    v1 = view(_DiskArray((1:30) * vec(1:21)', chunksize=(5, 7)), 3:26, 2:17)
+    v2 = view(_DiskArray((1:30) * vec(1:21)', chunksize=(5, 7)), 4:27, 3:18)
+    a1 .= a2
+    @test Array(a1) == Array(a2)
+    a1 .= a3
+    @test all(Array(a1) .== Array(a3))
+    a1 .= a4
+    @test all(Array(a1) .== Array(a4))
+    a4 .= a3
+    @test all(Array(a4) .== Array(a3))
+    a3 .= a2
+    @test all(Array(a3) .== Array(a2))
+    
+    a1 .= v1
+    @test all(Array(a1) .== (3:26) * vec(2:17)')
+    a1 .= v2
+    @test all(Array(a1) .== (4:27) * vec(3:18)')
+
+    # TODO Chunks that don't align at all - need to work out 
+    # how to choose the smallest chunks to read twice, and when
+    # to just ignore the chunks and load the whole array.
+    # a2 .= v1
+    # @test all(Array(a2) .== (3:26) * vec(2:17)')
+    # a2 .= v2
+    # @test all(Array(a2) .== (4:27) * vec(3:18)')
+end

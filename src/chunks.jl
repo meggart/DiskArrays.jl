@@ -225,3 +225,5 @@ function estimate_chunksize(s, si)
   end
   GridChunks(s,cs)
 end
+
+include("batchgetindex.jl")

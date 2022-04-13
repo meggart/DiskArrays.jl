@@ -62,8 +62,11 @@ function common_chunks(s, args...)
             end
             isempty(csnow) && return RegularChunks(1, 0, s[n])
             cs = first(csnow).chunks[n]
-            all(s->s.chunks[n] == cs, csnow) || error("Chunks do not align in dimension $n")
-            return cs
+            if all(s -> s.chunks[n] == cs, csnow) 
+                return cs
+            else
+                return merge_chunks(csnow, n)
+            end
         end
         return GridChunks(tt...)
     end
@@ -73,6 +76,37 @@ end
 
 to_ranges(r::Tuple) = r
 to_ranges(r::CartesianIndices) = r.indices
+
+function merge_chunks(csnow, n)
+    chpos = [1 for ch in csnow]
+    chunk_offsets = Int[0]
+    while true
+        # Get the largest chunk end point
+        cur_chunks = map(chpos, csnow) do i, ch
+            ch.chunks[n][i] 
+        end
+        chend = maximum(last.(cur_chunks))
+        # @show chpos chend# cur_chunks 
+        # Find the position where the end of a chunk matches the new chunk endpoint
+        newchpos = map(chpos, csnow) do i, ch
+            found = findnext(x -> (@show last(x); last(x) == chend), ch.chunks[n], i)
+            found === nothing && error("Chunks do not align in dimension $n")
+            found
+        end
+        # If we can't find this end point for all chunk lists, error
+        firstcs = csnow[1].chunks[n]
+        # Define the new combined chunk offset
+        newchunkoffset = last(firstcs[newchpos[1]])
+        # Update positions in each list of chunks
+        chpos = newchpos .+ 1
+        # If this is the last chunk, break
+        chpos[1] >= length(firstcs) && break
+        # Add our new offset
+        push!(chunk_offsets, newchunkoffset)
+    end
+    push!(chunk_offsets, last(last(csnow[1].chunks[n])))
+    return IrregularChunks(chunk_offsets)
+end
 
 subsetarg(x, a) = x
 function subsetarg(x::AbstractArray, a)

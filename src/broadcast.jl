@@ -89,48 +89,7 @@ maybeonerange(out, ::Tuple{}, ranges) = out
 maybeonerange(sizes, ranges) = maybeonerange((), sizes, ranges)
 splittuple(x1, xr...) = x1, xr
 
-# Implementation macros
-
-macro implement_mapreduce(t)
-    quote
-        function Base._mapreduce(f, op, v::$t)
-            mapreduce(op, eachchunk(v)) do cI
-                a = v[to_ranges(cI)...]
-                mapreduce(f, op, a)
-            end
-        end
-        function Base.mapreducedim!(f, op, R::AbstractArray, A::$t)
-            sR = size(R)
-            foreach(eachchunk(A)) do cI
-                a = A[to_ranges(cI)...]
-                ainds = map((cinds, arsize)->arsize==1 ? Base.OneTo(1) : cinds, to_ranges(cI), size(R))
-                # Maybe the view into R here is problematic and a copy would be faster
-                Base.mapreducedim!(f, op, view(R, ainds...), a)
-            end
-            R
-        end
-
-        function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t)
-            cc = eachchunk(itr)
-            isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
-            Base.mapfoldl_impl(f, op, nt, itr, cc)
-        end
-        function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t, cc)
-            y = first(cc)
-            a = itr[to_ranges(y)...]
-            init = mapfoldl(f, op, a)
-            Base.mapfoldl_impl(f, op, (init=init, ), itr, Iterators.drop(cc, 1))
-        end
-        function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init, )}, itr::$t, cc)
-            init = nt.init
-            for y in cc
-                a = itr[to_ranges(y)...]
-                init = mapfoldl(f, op, a, init=init)
-            end
-            init
-        end
-    end
-end
+# Implementation macro
 
 macro implement_broadcast(t)
     quote

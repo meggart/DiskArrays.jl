@@ -5,10 +5,12 @@ export AbstractDiskArray, interpret_indices_disk
 include("diskarray.jl")
 include("array.jl")
 include("chunks.jl")
-include("ops.jl")
+include("broadcast.jl")
 include("iterator.jl")
-include("subarrays.jl")
-include("permute_reshape.jl")
+include("mapreduce.jl")
+include("permute.jl")
+include("reshape.jl")
+include("subarray.jl")
 
 # The all-in-one macro
 

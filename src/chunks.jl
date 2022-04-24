@@ -21,12 +21,12 @@ end
 
 # Base methods
 
-function Base.getindex(r::RegularChunks, i::Int) 
+function Base.getindex(r::RegularChunks, i::Int)
     @boundscheck checkbounds(r, i)
-    max((i - 1) * r.cs + 1 - r.offset, 1):min(i * r.cs - r.offset, r.s)
+    return max((i - 1) * r.cs + 1 - r.offset, 1):min(i * r.cs - r.offset, r.s)
 end
 Base.size(r::RegularChunks, _) = div(r.s + r.offset - 1, r.cs) + 1
-Base.size(r::RegularChunks) = (size(r, 1), )
+Base.size(r::RegularChunks) = (size(r, 1),)
 
 # DiskArrays interface
 
@@ -42,16 +42,15 @@ function subsetchunks(r::RegularChunks, subs::AbstractUnitRange)
 end
 function subsetchunks(r::RegularChunks, subs::AbstractRange)
     # This is a method only to make "reverse" work and should error for all other cases
-    if step(subs) == -1 && first(subs)==r.s && last(subs)==1
+    if step(subs) == -1 && first(subs) == r.s && last(subs) == 1
         lastlen = length(last(r))
-        newoffset = r.cs-lastlen
+        newoffset = r.cs - lastlen
         return RegularChunks(r.cs, newoffset, r.s)
     end
 end
 approx_chunksize(r::RegularChunks) = r.cs
 grid_offset(r::RegularChunks) = r.offset
 max_chunksize(r::RegularChunks) = r.cs
-
 
 """
     IrregularChunks <: ChunkType
@@ -75,11 +74,11 @@ end
 
 # Base methods
 
-function Base.getindex(r::IrregularChunks, i::Int) 
+function Base.getindex(r::IrregularChunks, i::Int)
     @boundscheck checkbounds(r, i)
     return (r.offsets[i] + 1):r.offsets[i + 1]
 end
-Base.size(r::IrregularChunks) = (length(r.offsets) - 1, )
+Base.size(r::IrregularChunks) = (length(r.offsets) - 1,)
 
 # DiskArrays interface
 
@@ -87,21 +86,20 @@ function subsetchunks(r::IrregularChunks, subs::UnitRange)
     c1 = searchsortedfirst(r.offsets, first(subs)) - 1
     c2 = searchsortedfirst(r.offsets, last(subs))
     offsnew = r.offsets[c1:c2]
-    firstoffset = first(subs)-r.offsets[c1] - 1
+    firstoffset = first(subs) - r.offsets[c1] - 1
     offsnew[end] = last(subs)
     offsnew[2:end] .= offsnew[2:end] .- firstoffset
     offsnew .= offsnew .- first(offsnew)
     return IrregularChunks(offsnew)
 end
 function approx_chunksize(r::IrregularChunks)
-    round(Int, sum(diff(r.offsets)) / (length(r.offsets) - 1))
+    return round(Int, sum(diff(r.offsets)) / (length(r.offsets) - 1))
 end
 grid_offset(r::IrregularChunks) = 0
 max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
 
-
 struct GridChunks{N} <: AbstractArray{NTuple{N,UnitRange{Int64}},N}
-    chunks::Tuple{Vararg{ChunkType, N}}
+    chunks::Tuple{Vararg{ChunkType,N}}
 end
 GridChunks(ct::ChunkType...) = GridChunks(ct)
 GridChunks(a, chunksize; offset=(_ -> 0).(size(a))) = GridChunks(size(a), chunksize; offset)
@@ -114,7 +112,7 @@ end
 
 # Base methods
 
-function Base.getindex(g::GridChunks{N}, i::Vararg{Int,N}) where N 
+function Base.getindex(g::GridChunks{N}, i::Vararg{Int,N}) where {N}
     @boundscheck checkbounds(g, i...)
     return getindex.(g.chunks, i)
 end
@@ -161,7 +159,7 @@ const fallback_element_size = Ref(100)
 # be over-ridden by the package that implements the interface
 
 function eachchunk(a::AbstractArray)
-    estimate_chunksize(a)
+    return estimate_chunksize(a)
 end
 
 # Chunked trait
@@ -179,7 +177,7 @@ Returns the approximate size of an element of a in bytes. This falls back to cal
 the element type or to the value stored in `DiskArrays.fallback_element_size`. Methods can be added for 
 custom containers. 
 """
-function element_size(a::AbstractArray) 
+function element_size(a::AbstractArray)
     if isbitstype(eltype(a))
         return sizeof(eltype(a))
     elseif isbitstype(Base.nonmissingtype(eltype(a)))
@@ -194,12 +192,12 @@ estimate_chunksize(a::AbstractArray) = estimate_chunksize(size(a), element_size(
 function estimate_chunksize(s, si)
     ii = searchsortedfirst(cumprod(collect(s)), default_chunk_size[] * 1e6 / si)
     cs = ntuple(length(s)) do idim
-        if idim<ii
+        if idim < ii
             return s[idim]
-        elseif idim>ii
+        elseif idim > ii
             return 1
         else
-            sbefore = idim == 1 ? 1 : prod(s[1:idim - 1])
+            sbefore = idim == 1 ? 1 : prod(s[1:(idim - 1)])
             return floor(Int, default_chunk_size[] * 1e6 / si / sbefore)
         end
     end

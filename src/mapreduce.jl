@@ -13,7 +13,11 @@ macro implement_mapreduce(t)
             sR = size(R)
             foreach(eachchunk(A)) do cI
                 a = A[to_ranges(cI)...]
-                ainds = map((cinds, arsize)->arsize==1 ? Base.OneTo(1) : cinds, to_ranges(cI), size(R))
+                ainds = map(
+                    (cinds, arsize) -> arsize == 1 ? Base.OneTo(1) : cinds,
+                    to_ranges(cI),
+                    size(R),
+                )
                 # Maybe the view into R here is problematic and a copy would be faster
                 Base.mapreducedim!(f, op, view(R, ainds...), a)
             end
@@ -29,13 +33,13 @@ macro implement_mapreduce(t)
             y = first(cc)
             a = itr[to_ranges(y)...]
             init = mapfoldl(f, op, a)
-            return Base.mapfoldl_impl(f, op, (init=init, ), itr, Iterators.drop(cc, 1))
+            return Base.mapfoldl_impl(f, op, (init=init,), itr, Iterators.drop(cc, 1))
         end
-        function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init, )}, itr::$t, cc)
+        function Base.mapfoldl_impl(f, op, nt::NamedTuple{(:init,)}, itr::$t, cc)
             init = nt.init
             for y in cc
                 a = itr[to_ranges(y)...]
-                init = mapfoldl(f, op, a, init=init)
+                init = mapfoldl(f, op, a; init=init)
             end
             return init
         end

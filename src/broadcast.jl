@@ -4,53 +4,57 @@ import Base.Broadcast: Broadcasted, AbstractArrayStyle, DefaultArrayStyle, flatt
 
 struct ChunkStyle{N} <: Base.Broadcast.AbstractArrayStyle{N} end
 
-Base.BroadcastStyle(::ChunkStyle{N}, ::ChunkStyle{M}) where {N, M}= ChunkStyle{max(N, M)}()
-Base.BroadcastStyle(::ChunkStyle{N}, ::DefaultArrayStyle{M}) where {N, M}= ChunkStyle{max(N, M)}()
-Base.BroadcastStyle(::DefaultArrayStyle{M}, ::ChunkStyle{N}) where {N, M}= ChunkStyle{max(N, M)}()
-
+Base.BroadcastStyle(::ChunkStyle{N}, ::ChunkStyle{M}) where {N,M} = ChunkStyle{max(N, M)}()
+function Base.BroadcastStyle(::ChunkStyle{N}, ::DefaultArrayStyle{M}) where {N,M}
+    return ChunkStyle{max(N, M)}()
+end
+function Base.BroadcastStyle(::DefaultArrayStyle{M}, ::ChunkStyle{N}) where {N,M}
+    return ChunkStyle{max(N, M)}()
+end
 
 struct BroadcastDiskArray{T,N,BC<:Broadcasted{<:ChunkStyle{N}}} <: AbstractDiskArray{T,N}
     bc::BC
 end
-function BroadcastDiskArray(bcf::B) where {B<:Broadcasted{<:ChunkStyle{N}}} where N
+function BroadcastDiskArray(bcf::B) where {B<:Broadcasted{<:ChunkStyle{N}}} where {N}
     ElType = Base.Broadcast.combine_eltypes(bcf.f, bcf.args)
-    BroadcastDiskArray{ElType, N, B}(bcf)
+    return BroadcastDiskArray{ElType,N,B}(bcf)
 end
 
 # Base methods
 
 Base.size(bc::BroadcastDiskArray) = size(bc.bc)
 function DiskArrays.readblock!(a::BroadcastDiskArray, aout, i::OrdinalRange...)
-    argssub = map(arg->subsetarg(arg, i), a.bc.args)
-    aout .= a.bc.f.(argssub...)
+    argssub = map(arg -> subsetarg(arg, i), a.bc.args)
+    return aout .= a.bc.f.(argssub...)
 end
 Base.broadcastable(bc::BroadcastDiskArray) = bc.bc
-function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where N
-    BroadcastDiskArray(flatten(bc))
+function Base.copy(bc::Broadcasted{ChunkStyle{N}}) where {N}
+    return BroadcastDiskArray(flatten(bc))
 end
 Base.copy(a::BroadcastDiskArray) = copyto!(zeros(eltype(a), size(a)), a.bc)
-function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where N
+function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where {N}
     bcf = flatten(bc)
     gcd = common_chunks(size(bcf), dest, bcf.args...)
     foreach(gcd) do cnow
         # Possible optimization would be to use a LRU cache here, so that data has not
         # to be read twice in case of repeating indices
-        argssub = map(i->subsetarg(i, cnow), bcf.args)
+        argssub = map(i -> subsetarg(i, cnow), bcf.args)
         dest[cnow...] .= bcf.f.(argssub...)
     end
-    dest
+    return dest
 end
 
 # DiskArrays interface
 
 haschunks(a::BroadcastDiskArray) = Chunked()
 function eachchunk(a::BroadcastDiskArray)
-    common_chunks(size(a.bc), a.bc.args...)
+    return common_chunks(size(a.bc), a.bc.args...)
 end
 function common_chunks(s, args...)
     N = length(s)
-    chunkedars = filter(i->haschunks(i)===Chunked(), collect(args))
-    all(ar->isa(eachchunk(ar), GridChunks), chunkedars) || error("Currently only chunks of type GridChunks can be merged by broadcast")
+    chunkedars = filter(i -> haschunks(i) === Chunked(), collect(args))
+    all(ar -> isa(eachchunk(ar), GridChunks), chunkedars) ||
+        error("Currently only chunks of type GridChunks can be merged by broadcast")
     if isempty(chunkedars)
         totalsize = sum(sizeof ∘ eltype, args)
         return estimate_chunksize(s, totalsize)
@@ -62,7 +66,7 @@ function common_chunks(s, args...)
             end
             isempty(csnow) && return RegularChunks(1, 0, s[n])
             cs = first(csnow).chunks[n]
-            if all(s -> s.chunks[n] == cs, csnow) 
+            if all(s -> s.chunks[n] == cs, csnow)
                 return cs
             else
                 return merge_chunks(csnow, n)
@@ -83,7 +87,7 @@ function merge_chunks(csnow, n)
     while true
         # Get the largest chunk end point
         cur_chunks = map(chpos, csnow) do i, ch
-            ch.chunks[n][i] 
+            ch.chunks[n][i]
         end
         chend = maximum(last.(cur_chunks))
         # @show chpos chend# cur_chunks 
@@ -111,13 +115,13 @@ end
 subsetarg(x, a) = x
 function subsetarg(x::AbstractArray, a)
     ashort = maybeonerange(size(x), a)
-    view(x, ashort...) # Maybe making a copy here would be faster, need to check...
+    return view(x, ashort...) # Maybe making a copy here would be faster, need to check...
 end
-repsingle(s, r) = s==1 ? (1:1) : r
+repsingle(s, r) = s == 1 ? (1:1) : r
 function maybeonerange(out, sizes, ranges)
     s1, sr = splittuple(sizes...)
     r1, rr = splittuple(ranges...)
-    maybeonerange((out..., repsingle(s1, r1)), sr, rr)
+    return maybeonerange((out..., repsingle(s1, r1)), sr, rr)
 end
 maybeonerange(out, ::Tuple{}, ranges) = out
 maybeonerange(sizes, ranges) = maybeonerange((), sizes, ranges)

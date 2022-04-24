@@ -9,13 +9,13 @@ abstract type AbstractDiskArray{T,N} <: AbstractArray{T,N} end
 
 # Base methods
 
-Base.ndims(::AbstractDiskArray{<:Any, N}) where N = N
-Base.eltype(::AbstractDiskArray{T}) where T = T
+Base.ndims(::AbstractDiskArray{<:Any,N}) where {N} = N
+Base.eltype(::AbstractDiskArray{T}) where {T} = T
 function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
-    println(io, "Disk Array with size ", join(size(X), " x "))
+    return println(io, "Disk Array with size ", join(size(X), " x "))
 end
 function Base.show(io::IO, X::AbstractDiskArray)
-    println(io, "Disk Array with size ", join(size(X), " x "))
+    return println(io, "Disk Array with size ", join(size(X), " x "))
 end
 
 # DiskArrays interface
@@ -41,9 +41,9 @@ function readblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
     # function could test how sparse the reading is and maybe be smarter here
     # by reading slices.
     mi, ma = map(minimum, r), map(maximum, r)
-    A_temp = similar(A_ret, map((a, b)->b-a+1, mi, ma))
+    A_temp = similar(A_ret, map((a, b) -> b - a + 1, mi, ma))
     readblock!(A, A_temp, map(:, mi, ma)...)
-    A_ret .= view(A_temp, map(ir->ir.-(minimum(ir).-1), r)...)
+    A_ret .= view(A_temp, map(ir -> ir .- (minimum(ir) .- 1), r)...)
     return nothing
 end
 
@@ -53,8 +53,8 @@ function writeblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
     # function could test how sparse the reading is and maybe be smarter here
     # by reading slices.
     mi, ma = map(minimum, r), map(maximum, r)
-    A_temp = similar(A_ret, map((a, b)->b-a+1, mi, ma))
-    A_temp[map(ir->ir.-(minimum(ir).-1), r)...] = A_ret
+    A_temp = similar(A_ret, map((a, b) -> b - a + 1, mi, ma))
+    A_temp[map(ir -> ir .- (minimum(ir) .- 1), r)...] = A_ret
     writeblock!(A, A_temp, map(:, mi, ma)...)
     return nothing
 end
@@ -66,8 +66,8 @@ function getindex_disk(a, i...)
     return trans(data)
 end
 
-function setindex_disk!(a::AbstractDiskArray{T}, v::T, i...) where T<:AbstractArray
-    setindex_disk!(a, [v], i...)
+function setindex_disk!(a::AbstractDiskArray{T}, v::T, i...) where {T<:AbstractArray}
+    return setindex_disk!(a, [v], i...)
 end
 function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
     inds, trans = interpret_indices_disk(a, i)
@@ -99,11 +99,13 @@ end
 function interpret_indices_disk(A, ::Tuple{Colon})
     return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
 end
-interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) =
-interpret_indices_disk(A, r[1].I)
-interpret_indices_disk(A, r::Tuple{<:CartesianIndices}) =
-interpret_indices_disk(A, r[1].indices)
-function interpret_indices_disk(A, r::NTuple{N,Union{Integer,AbstractVector,Colon}}) where N
+interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) = interpret_indices_disk(A, r[1].I)
+function interpret_indices_disk(A, r::Tuple{<:CartesianIndices})
+    return interpret_indices_disk(A, r[1].indices)
+end
+function interpret_indices_disk(
+    A, r::NTuple{N,Union{Integer,AbstractVector,Colon}}
+) where {N}
     if ndims(A) == N
         inds = map(_convert_index, r, size(A))
         resh = DimsDropper(findints(r))
@@ -125,8 +127,8 @@ function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
         inds = getbb(ba)
         resh = a -> a[view(ba, inds...)]
         return inds, resh
-    elseif ndims(ba)==1
-        return interpret_indices_disk(A, (reshape(ba, size(A)), ))
+    elseif ndims(ba) == 1
+        return interpret_indices_disk(A, (reshape(ba, size(A)),))
     else
         throw(BoundsError(A, r))
     end
@@ -152,7 +154,7 @@ end
 struct DimsDropper{D}
     d::D
 end
-(d::DimsDropper)(a) = length(d.d)==ndims(a) ? a[1] : dropdims(a, dims=d.d)
+(d::DimsDropper)(a) = length(d.d) == ndims(a) ? a[1] : dropdims(a; dims=d.d)
 
 struct TransformStack{S}
     s::S
@@ -163,9 +165,9 @@ function getbb(ar::AbstractArray{Bool})
     maxval = CartesianIndex(size(ar))
     minval = CartesianIndex{ndims(ar)}()
     function reduceop(i1, i2)
-        i2 === nothing ? i1 : (min(i1[1], i2), max(i1[2], i2))
+        return i2 === nothing ? i1 : (min(i1[1], i2), max(i1[2], i2))
     end
-    mi, ma = mapfoldl(reduceop, zip(CartesianIndices(ar), ar), init=(maxval, minval)) do ii
+    mi, ma = mapfoldl(reduceop, zip(CartesianIndices(ar), ar); init=(maxval, minval)) do ii
         ind, val = ii
         val ? ind : nothing
     end
@@ -175,11 +177,13 @@ end
 # Helper functions
 
 "For two given tuples return a truncated version of both so they have common length"
-commonlength(a, b) = _commonlength((first(a), ), (first(b), ), Base.tail(a), Base.tail(b))
+commonlength(a, b) = _commonlength((first(a),), (first(b),), Base.tail(a), Base.tail(b))
 commonlength(::Tuple{}, b) = (), ()
 commonlength(a, ::Tuple{}) = (), ()
 
-_commonlength(a1, b1, a, b) = _commonlength((a1..., first(a)), (b1..., first(b)), Base.tail(a), Base.tail(b))
+function _commonlength(a1, b1, a, b)
+    return _commonlength((a1..., first(a)), (b1..., first(b)), Base.tail(a), Base.tail(b))
+end
 _commonlength(a1, b1, ::Tuple{}, b) = (a1, b1)
 _commonlength(a1, b1, a, ::Tuple{}) = (a1, b1)
 
@@ -188,7 +192,7 @@ findints(x) = _findints((), 1, x...)
 
 _findints(c, i, x::Integer, rest...) = _findints((c..., i), i + 1, rest...)
 _findints(c, i, x, rest...) = _findints(c, i + 1, rest...)
-_findints(c, i)  = c
+_findints(c, i) = c
 # Normal indexing for a full subset of an array
 _convert_index(i::Integer, s::Integer) = i:i
 _convert_index(i::AbstractVector, s::Integer) = i
@@ -199,7 +203,7 @@ _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 macro implement_getindex(t)
     quote
         function Base.getindex(a::$t, i...)
-            getindex_disk(a, i...)
+            return getindex_disk(a, i...)
         end
     end
 end
@@ -208,12 +212,13 @@ macro implement_setindex(t)
     quote
         Base.setindex!(a::$t, v::AbstractArray, i...) = setindex_disk!(a, v, i...)
         # Add an extra method if a single number is given
-        Base.setindex!(a::$t{<:Any,N}, v, i...) where N =
-            setindex!(a, fill(v, ntuple(i->1, N)...), i...)
+        function Base.setindex!(a::$t{<:Any,N}, v, i...) where {N}
+            return setindex!(a, fill(v, ntuple(i -> 1, N)...), i...)
+        end
         # Special care must be taken for logical indexing, we can not avoid reading
         # the data before writing
         function Base.setindex!(a::$t, v::AbstractArray, i::AbstractArray{<:Bool})
-            inds, trans = interpret_indices_disk(a, (i, ))
+            inds, trans = interpret_indices_disk(a, (i,))
             data = Array{eltype(a)}(undef, map(length, inds)...)
             readblock!(a, data, inds...)
 
@@ -223,4 +228,3 @@ macro implement_setindex(t)
         end
     end
 end
-

@@ -8,7 +8,7 @@ end
 
 Base.length(b::BlockedIndices) = prod(last.(last.(b.c.chunks)))
 Base.IteratorEltype(::Type{<:BlockedIndices}) = Base.HasEltype()
-Base.IteratorSize(::Type{<:BlockedIndices{<:GridChunks{N}}}) where N = Base.HasShape{N}()
+Base.IteratorSize(::Type{<:BlockedIndices{<:GridChunks{N}}}) where {N} = Base.HasShape{N}()
 Base.size(b::BlockedIndices) = last.(last.(b.c.chunks))
 Base.eltype(b::BlockedIndices) = CartesianIndex{ndims(b.c)}
 function Base.iterate(a::BlockedIndices)

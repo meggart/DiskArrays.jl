@@ -86,10 +86,9 @@ function merge_chunks(csnow, n)
             ch.chunks[n][i] 
         end
         chend = maximum(last.(cur_chunks))
-        # @show chpos chend# cur_chunks 
         # Find the position where the end of a chunk matches the new chunk endpoint
         newchpos = map(chpos, csnow) do i, ch
-            found = findnext(x -> (@show last(x); last(x) == chend), ch.chunks[n], i)
+            found = findnext(x -> last(x) == chend, ch.chunks[n], i)
             found === nothing && error("Chunks do not align in dimension $n")
             found
         end

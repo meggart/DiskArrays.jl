@@ -7,6 +7,9 @@ function eachchunk end
 
 abstract type ChunkType <: AbstractVector{UnitRange} end
 
+findchunk(a::ChunkType,i::AbstractUnitRange) = findchunk(a,first(i)):findchunk(a,last(i))
+findchunk(a::ChunkType,::Colon) = 1:length(a)
+
 """
     RegularChunks <: ChunkType
 
@@ -60,6 +63,8 @@ function subsetchunks(r::RegularChunks, subs::AbstractRange)
       subsetchunks_fallback(r,subs)
   end
 end
+findchunk(r::RegularChunks, i::Int) = div(i+r.offset-1,r.cs)+1
+
 
 subsetchunks(r,subs) = subsetchunks_fallback(r,subs)
 
@@ -107,6 +112,7 @@ function subsetchunks(r::IrregularChunks, subs::UnitRange)
     offsnew .= offsnew .- first(offsnew)
     return IrregularChunks(offsnew)
 end
+findchunk(r::IrregularChunks,i::Int) = searchsortedfirst(r.offsets, i)-1
 function approx_chunksize(r::IrregularChunks)
     return round(Int, sum(diff(r.offsets)) / (length(r.offsets) - 1))
 end
@@ -170,7 +176,7 @@ function subsetchunks_fallback(r, subs)
       #Chunks are Irregular
       chunks = rev ? reverse(cs) : cs
 
-      IrregularChunks(chunksizes = filter(!iszero,cs))
+      IrregularChunks(chunksizes = filter(!iszero,chunks))
   end
 end
 

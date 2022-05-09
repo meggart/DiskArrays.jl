@@ -229,6 +229,36 @@ end
     @test DiskArrays.max_chunksize(gridc) == (5, 2, 4)
 end
 
+@testset "SubsetChunks" begin
+    r1 = RegularChunks(10,2,30)
+    @test subsetchunks(r1,1:30) == RegularChunks(10,2,30)
+    @test subsetchunks(r1,30:-1:1) == RegularChunks(10,8,30)
+    @test subsetchunks(r1,5:25) == RegularChunks(10,6,21)
+    @test subsetchunks(r1,25:-1:5) == RegularChunks(10,3,21)
+    @test subsetchunks(r1,1:2:30) == RegularChunks(5,1,15)
+    @test subsetchunks(r1,30:-2:1) == RegularChunks(5,4,15)
+    @test subsetchunks(r1,5:2:25) == RegularChunks(5,3,11)
+    @test subsetchunks(r1,25:-2:5) == RegularChunks(5,1,11)
+    @test subsetchunks(r1,5:15) == RegularChunks(7,3,11)
+    @test subsetchunks(r1,2:10) == RegularChunks(7,0,9)
+    @test subsetchunks(r1,15:-1:5) == RegularChunks(7,0,11)
+    @test subsetchunks(r1,10:-1:2) == RegularChunks(7,5,9)
+    @test subsetchunks(r1,9:14) == RegularChunks(6,0,6)
+    @test subsetchunks(r1,9:2:14) == RegularChunks(3,0,3)
+    @test subsetchunks(r1,14:-1:9) == RegularChunks(6,0,6)
+    @test subsetchunks(r1,14:-2:9) == RegularChunks(3,0,3)
+    @test subsetchunks(r1,1:3:30) == IrregularChunks(chunksizes=[3,3,4])
+    @test subsetchunks(r1,28:-3:1) == IrregularChunks(chunksizes=[4,3,3])
+    @test subsetchunks(r1,[5,6,7,19,20,21]) == [1:3,4:6]
+    @test subsetchunks(r1,[28,27,19,17,10,7]) == [1:3,4:5,6:6]
+
+    r2 = IrregularChunks(chunksizes = [3,3,4,3,3,4])
+    @test subsetchunks(r2,1:20) == r2
+    @test subsetchunks(r2,3:18) == IrregularChunks(chunksizes = [1,3,4,3,3,2])
+    @test subsetchunks(r2,5:10) == [1:2,3:6]
+    @test subsetchunks(r2,4:8) == [1:3,4:5]
+end
+
 @testset "Unchunked DiskArrays" begin
     a = UnchunkedDiskArray(reshape(1:1000, (10, 20, 5)))
     v = view(a, 1:2, 1, 1:3)

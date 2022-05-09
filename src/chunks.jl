@@ -40,14 +40,29 @@ function subsetchunks(r::RegularChunks, subs::AbstractUnitRange)
     end
     return r
 end
+
 function subsetchunks(r::RegularChunks, subs::AbstractRange)
-    # This is a method only to make "reverse" work and should error for all other cases
-    if step(subs) == -1 && first(subs) == r.s && last(subs) == 1
-        lastlen = length(last(r))
-        newoffset = r.cs - lastlen
-        return RegularChunks(r.cs, newoffset, r.s)
-    end
+  if rem(r.cs,step(subs)) == 0
+      newcs = r.cs ÷ abs(step(subs))
+      if step(subs) > 0
+          newoffset = mod(first(subs)-1+r.offset,r.cs) ÷ step(subs)
+          RegularChunks(newcs,newoffset,length(subs))
+      elseif step(subs) < 0
+          r2 = subsetchunks(r,last(subs):first(subs))
+          @show (r.cs - length(last(r2)))
+          @show (-step(subs))
+          newoffset = (r.cs - length(last(r2))) ÷ (-step(subs))
+          RegularChunks(newcs,newoffset,length(subs))
+      else
+          throw(ArgumentError("Can only subset chunks for sorted indices"))
+      end
+  else
+      subsetchunks_fallback(r,subs)
+  end
 end
+
+subsetchunks(r,subs) = subsetchunks_fallback(r,subs)
+
 approx_chunksize(r::RegularChunks) = r.cs
 grid_offset(r::RegularChunks) = r.offset
 max_chunksize(r::RegularChunks) = r.cs
@@ -117,6 +132,48 @@ function Base.getindex(g::GridChunks{N}, i::Vararg{Int,N}) where {N}
     return getindex.(g.chunks, i)
 end
 Base.size(g::GridChunks) = length.(g.chunks)
+
+
+function subsetchunks_fallback(r, subs)
+  #This is a fallback method that should work for Regular and Irregular chunks r 
+  #Assuming the desired subset is sorted
+  # We simply compute the chunk for every element in subs and collect everything together 
+  #again in either a Regular or IrregularChunk
+  rev = if issorted(subs)
+      false
+  elseif issorted(subs,rev=true)
+      true
+  else
+      throw(ArgumentError("Can only subset chunks for sorted indices"))
+  end
+  cs = zeros(Int,length(r))
+  for i in subs
+      cs[findchunk(r,i)] += 1
+  end
+  # Find first and last chunk where elements are extracted
+  i1 = findfirst(!iszero,cs)
+  i2 = findlast(!iszero,cs)
+  if i2==i1
+      #only a single chunk is affected
+      return RegularChunks(length(subs),0,length(subs))
+  elseif i2-i1 == 1
+      #Two affected chunks
+      l1,l2 = rev ? (i2,i1) : (i1,i2)
+      chunksize = max(l1,l2)
+      RegularChunks(chunksize,chunksize-l1,length(subs))
+  elseif all(==(cs[i1+1],view(cs,i1+1:i2-1))) && cs[i2] <= cs[i1+1] && cs[i1] <= cs[i1+1]
+      #All chunks have the same size, only first and last chunk can be shorter
+      l1 = rev ? cs[i2] : cs[i1]
+      chunksize = cs[i1+1]
+      RegularChunks(chunksize,chunksize-l1,length(subs))
+  else
+      #Chunks are Irregular
+      chunks = rev ? reverse(cs) : cs
+
+      IrregularChunks(chunksizes = filter(!iszero,cs))
+  end
+end
+
 
 # DiskArrays interface
 

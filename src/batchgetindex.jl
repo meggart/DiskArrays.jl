@@ -23,6 +23,59 @@ function getrangeinsert(i1)
     allcols
 end
 
+carttotuple(i::CartesianIndex) = i.I
+carttotuple(i::Tuple) = i
+carttotuple(i::Integer) = (Int(i),)
+
+
+getnd(::Type{<:Tuple{Vararg{Any,N}}}) where N = N
+
+
+function to_batchgetindex(a,i::AbstractVector{Int})
+    ci = CartesianIndices(size(a))
+    to_batchgetindex(a,ci[i])
+end
+function to_batchgetindex(a,i...)
+    inds = ()
+    idim = 1
+    ibcdim = 1
+    for ind in i
+        if isa(ind,AbstractArray) && !isa(ind,AbstractUnitRange)
+            if eltype(ind) <: Bool
+                o = carttotuple.(findall(ind))
+                outshape = (ones(Int,ibcdim-1)...,length(o))
+                inds = (inds...,reshape(o,outshape))
+                idim = idim + ndims(ind)
+                ibcdim = ibcdim+1
+            elseif eltype(ind) <: Union{CartesianIndex,Tuple,Integer}
+                o = carttotuple.(ind)
+                N = getnd(eltype(o))
+                outshape = (ones(Int,ibcdim-1)...,size(ind)...)
+                inds = (inds...,reshape(o,outshape))
+                idim = idim+N
+                ibcdim = ibcdim + ndims(ind)
+            else
+                error("")
+            end
+        elseif isa(ind,Colon)
+            inds = (inds...,Ref((1:size(a,idim),)))
+            idim = idim+1
+        else
+            inds = (inds...,Ref((ind,)))
+            idim = idim+1
+        end
+    end
+    indvec = broadcast(inds...) do i...
+        tuple(Iterators.flatten(i)...)
+    end
+    disk_getindex_batch(a,indvec)
+end
+                
+
+
+
+
+
 function disk_getindex_batch(ar,indstoread)
 
     i1 = first(indstoread)
@@ -65,4 +118,4 @@ end
 function shrinkaxis(a,b) 
     max(first(a),first(b)):min(last(a),last(b))
 end
-shrinkaxis(a::Int,b::Int) = a,b
+shrinkaxis(a::Int,_) = a

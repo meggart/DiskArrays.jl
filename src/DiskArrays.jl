@@ -55,10 +55,14 @@ Base.eltype(::AbstractDiskArray{T}) where T = T
 
 
 function getindex_disk(a, i...)
-  inds, trans = interpret_indices_disk(a,i)
-  data = Array{eltype(a)}(undef, map(length,inds)...)
-  readblock!(a,data,inds...)
-  trans(data)
+  if any(j->isa(j,AbstractArray) && !isa(j,AbstractRange), i)
+    to_batchgetindex(a,i...)
+  else
+    inds, trans = interpret_indices_disk(a,i)
+    data = Array{eltype(a)}(undef, map(length,inds)...)
+    readblock!(a,data,inds...)
+    trans(data)
+  end
 end
 
 setindex_disk!(a::AbstractDiskArray{T},v::T,i...) where T<:AbstractArray = 
@@ -119,18 +123,18 @@ function interpret_indices_disk(A, r::NTuple{N, Union{Integer, AbstractVector, C
   end
 end
 
-function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
-  ba = r[1]
-  if ndims(A)==ndims(ba)
-    inds = getbb(ba)
-    resh = a -> a[view(ba,inds...)]
-    return inds, resh
-  elseif ndims(ba)==1
-    interpret_indices_disk(A,(reshape(ba,size(A)),))
-  else
-    throw(BoundsError(A, r))
-  end
-end
+# function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
+#   ba = r[1]
+#   if ndims(A)==ndims(ba)
+#     inds = getbb(ba)
+#     resh = a -> a[view(ba,inds...)]
+#     return inds, resh
+#   elseif ndims(ba)==1
+#     interpret_indices_disk(A,(reshape(ba,size(A)),))
+#   else
+#     throw(BoundsError(A, r))
+#   end
+# end
 
 function interpret_indices_disk(A, r::NTuple{1, AbstractVector})
   lininds = first(r)
@@ -157,18 +161,18 @@ struct TransformStack{S}
 end
 (s::TransformStack)(a) = ∘(s.s...)(a)
 
-function getbb(ar::AbstractArray{Bool})
-  maxval = CartesianIndex(size(ar))
-  minval = CartesianIndex{ndims(ar)}()
-  reduceop = (i1,i2)->begin i2===nothing ? i1 : (min(i1[1],i2),max(i1[2],i2)) end
-  mi,ma = mapfoldl(reduceop,
-    zip(CartesianIndices(ar),ar),
-    init = (maxval,minval)) do ii
-    ind,val = ii
-    val ? ind : nothing
-  end
-  inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
-end
+# function getbb(ar::AbstractArray{Bool})
+#   maxval = CartesianIndex(size(ar))
+#   minval = CartesianIndex{ndims(ar)}()
+#   reduceop = (i1,i2)->begin i2===nothing ? i1 : (min(i1[1],i2),max(i1[2],i2)) end
+#   mi,ma = mapfoldl(reduceop,
+#     zip(CartesianIndices(ar),ar),
+#     init = (maxval,minval)) do ii
+#     ind,val = ii
+#     val ? ind : nothing
+#   end
+#   inds = map((i1,i2) -> i1:i2, mi.I,ma.I)
+# end
 
 #Some helper functions
 "For two given tuples return a truncated version of both so they have common length"

@@ -251,12 +251,16 @@ end
     @test subsetchunks(r1,28:-3:1) == IrregularChunks(chunksizes=[4,3,3])
     @test subsetchunks(r1,[5,6,7,19,20,21]) == [1:3,4:6]
     @test subsetchunks(r1,[28,27,19,17,10,7]) == [1:3,4:5,6:6]
+    @test subsetchunks(r1,[1,2,3]) == [1:3]
+    @test subsetchunks(r1,[1,2,3,10,11]) == [1:3,4:5]
+    @test_throws ArgumentError subsetchunks(r1,[3,4,5,1])
 
     r2 = IrregularChunks(chunksizes = [3,3,4,3,3,4])
     @test subsetchunks(r2,1:20) == r2
     @test subsetchunks(r2,3:18) == IrregularChunks(chunksizes = [1,3,4,3,3,2])
     @test subsetchunks(r2,5:10) == [1:2,3:6]
     @test subsetchunks(r2,4:8) == [1:3,4:5]
+    @test subsetchunks(r2,[2:9;11:18]) == RegularChunks(3,1,16)
 end
 
 @testset "Unchunked DiskArrays" begin

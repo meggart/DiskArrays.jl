@@ -7,8 +7,6 @@ function eachchunk end
 
 abstract type ChunkType <: AbstractVector{UnitRange} end
 
-findchunk(a::ChunkType,i::AbstractUnitRange) = findchunk(a,first(i)):findchunk(a,last(i))
-findchunk(a::ChunkType,::Colon) = 1:length(a)
 
 """
     RegularChunks <: ChunkType
@@ -52,12 +50,8 @@ function subsetchunks(r::RegularChunks, subs::AbstractRange)
           RegularChunks(newcs,newoffset,length(subs))
       elseif step(subs) < 0
           r2 = subsetchunks(r,last(subs):first(subs))
-          @show (r.cs - length(last(r2)))
-          @show (-step(subs))
           newoffset = (r.cs - length(last(r2))) ÷ (-step(subs))
           RegularChunks(newcs,newoffset,length(subs))
-      else
-          throw(ArgumentError("Can only subset chunks for sorted indices"))
       end
   else
       subsetchunks_fallback(r,subs)
@@ -165,9 +159,9 @@ function subsetchunks_fallback(r, subs)
   elseif i2-i1 == 1
       #Two affected chunks
       l1,l2 = rev ? (i2,i1) : (i1,i2)
-      chunksize = max(l1,l2)
-      RegularChunks(chunksize,chunksize-l1,length(subs))
-  elseif all(==(cs[i1+1],view(cs,i1+1:i2-1))) && cs[i2] <= cs[i1+1] && cs[i1] <= cs[i1+1]
+      chunksize = max(cs[l1],cs[l2])
+      RegularChunks(chunksize,chunksize-cs[l1],length(subs))
+  elseif all(==(cs[i1+1]),view(cs,i1+1:i2-1)) && cs[i2] <= cs[i1+1] && cs[i1] <= cs[i1+1]
       #All chunks have the same size, only first and last chunk can be shorter
       l1 = rev ? cs[i2] : cs[i1]
       chunksize = cs[i1+1]

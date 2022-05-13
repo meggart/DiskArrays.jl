@@ -75,6 +75,18 @@ Defines chunks along a dimension where chunk sizes are not constant but arbitrar
 struct IrregularChunks <: ChunkType
   offsets::Vector{Int}
 end
+
+"""
+    IrregularChunks(; chunksizes)
+
+Returns an IrregularChunks object for the given list of chunk sizes
+"""
+function IrregularChunks(; chunksizes)
+    offs = pushfirst!(cumsum(chunksizes), 0)
+    # push!(offs, last(offs)+1)
+    return IrregularChunks(offs)
+end
+
 function Base.getindex(r::IrregularChunks,i::Int) 
   @boundscheck checkbounds(r, i)
   (r.offsets[i]+1):r.offsets[i+1]
@@ -91,43 +103,6 @@ function subsetchunks(r::IrregularChunks, subs::UnitRange)
   IrregularChunks(offsnew)
 end
 findchunk(r::IrregularChunks,i::Int) = searchsortedfirst(r.offsets, i)-1
-
-approx_chunksize(r::IrregularChunks) = round(Int,sum(diff(r.offsets))/(length(r.offsets)-1))
-grid_offset(r::IrregularChunks) = 0
-max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
-
-
-"""
-    IrregularChunks(; chunksizes)
-
-Returns an IrregularChunks object for the given list of chunk sizes
-"""
-function IrregularChunks(; chunksizes)
-    offs = pushfirst!(cumsum(chunksizes), 0)
-    # push!(offs, last(offs)+1)
-    return IrregularChunks(offs)
-end
-
-# Base methods
-
-function Base.getindex(r::IrregularChunks, i::Int)
-    @boundscheck checkbounds(r, i)
-    return (r.offsets[i] + 1):r.offsets[i + 1]
-end
-Base.size(r::IrregularChunks) = (length(r.offsets) - 1,)
-
-# DiskArrays interface
-function subsetchunks(r::IrregularChunks, subs::UnitRange)
-  c1 = findchunk(r,first(subs))
-  c2 = findchunk(r,last(subs))
-  offsnew = r.offsets[c1:c2+1]
-  firstoffset = first(subs)-r.offsets[c1]-1
-  offsnew[end] = last(subs)
-  offsnew[2:end] .= offsnew[2:end] .- firstoffset
-  offsnew .= offsnew .- first(offsnew)
-  IrregularChunks(offsnew)
-end
-findchunk(r::IrregularChunks, i::Int) = searchsortedfirst(r.offsets, i) - 1
 function approx_chunksize(r::IrregularChunks)
     return round(Int, sum(diff(r.offsets)) / (length(r.offsets) - 1))
 end

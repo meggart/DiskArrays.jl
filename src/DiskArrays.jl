@@ -4,7 +4,6 @@ export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIn
 
 include("diskarray.jl")
 include("array.jl")
-include("chunks.jl")
 include("broadcast.jl")
 include("iterator.jl")
 include("mapreduce.jl")

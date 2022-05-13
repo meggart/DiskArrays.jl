@@ -73,10 +73,24 @@ max_chunksize(r::RegularChunks) = r.cs
 Defines chunks along a dimension where chunk sizes are not constant but arbitrary
 """
 struct IrregularChunks <: ChunkType
-    offsets::Vector{Int}
+  offsets::Vector{Int}
 end
-
-
+function Base.getindex(r::IrregularChunks,i::Int) 
+  @boundscheck checkbounds(r, i)
+  (r.offsets[i]+1):r.offsets[i+1]
+end
+Base.size(r::IrregularChunks) = (length(r.offsets)-1,)
+function subsetchunks(r::IrregularChunks, subs::UnitRange)
+  c1 = findchunk(r,first(subs))
+  c2 = findchunk(r,last(subs))
+  offsnew = r.offsets[c1:c2+1]
+  firstoffset = first(subs)-r.offsets[c1]-1
+  offsnew[end] = last(subs)
+  offsnew[2:end] .= offsnew[2:end] .- firstoffset
+  offsnew .= offsnew .- first(offsnew)
+  IrregularChunks(offsnew)
+end
+findchunk(r::IrregularChunks,i::Int) = searchsortedfirst(r.offsets, i)-1
 
 approx_chunksize(r::IrregularChunks) = round(Int,sum(diff(r.offsets))/(length(r.offsets)-1))
 grid_offset(r::IrregularChunks) = 0

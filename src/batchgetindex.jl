@@ -154,10 +154,46 @@ function writedata!(v,data,inds,::ReIndexer{M}) where M
     end
 end
 
-
-
-
 function shrinkaxis(a,b) 
     max(first(a),first(b)):min(last(a),last(b))
 end
 shrinkaxis(a::Int,_) = a
+
+# Define fallbacks for reading and writing sparse data
+function readblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
+    #Check how sparse the vectors are, we look at the largest stride in the inputs
+    need_batch = map(approx_chunksize(eachchunk(A)),r) do cs,ids
+        length(ids) == 1 && return false
+        largest_jump = maximum(diff(ids))
+        mi,ma = extrema(ids)
+        return largest_jump > cs && length(ids)/(ma-mi) < 0.5
+    end
+    if any(need_batch)
+        A_ret .= batchgetindex(A,r...)
+    else
+        mi, ma = map(minimum, r), map(maximum, r)
+        A_temp = similar(A_ret,map((a,b)->b-a+1,mi,ma))
+        readblock!(A,A_temp,map(:,mi,ma)...)
+        A_ret .= view(A_temp,map(ir->ir.-(minimum(ir).-1),r)...)
+    end
+    nothing
+  end
+  
+  function writeblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
+    #Check how sparse the vectors are, we look at the largest stride in the inputs
+    need_batch = map(approx_chunksize(eachchunk(A)),r) do cs,ids
+        length(ids) == 1 && return false
+        largest_jump = maximum(diff(ids))
+        mi,ma = extrema(ids)
+        return largest_jump > cs && length(ids)/(ma-mi) < 0.5
+    end
+    if any(need_batch)
+        batchsetindex!(a,v,i...)
+    else
+        mi,ma = map(minimum,r), map(maximum,r)
+        A_temp = similar(A_ret,map((a,b)->b-a+1,mi,ma))
+        A_temp[map(ir->ir.-(minimum(ir).-1),r)...] = A_ret
+        writeblock!(A,A_temp,map(:,mi,ma)...)
+    end
+    nothing
+  end

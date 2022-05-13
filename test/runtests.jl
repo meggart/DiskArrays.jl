@@ -281,6 +281,29 @@ end
   @test size(collect(s)) == (10, 9, 1)
 end
 
+@testset "Getindex/Setindex with vectors" begin
+  a = _DiskArray(reshape(1:20,4,5,1),chunksize = (4,1,1))
+  @test a[:,[1,4],1] == trueparent(a)[:,[1,4],1]
+  @test getindex_count(a) == 2
+  coords = CartesianIndex.([(1,1,1),(3,1,1),(2,4,1),(4,4,1)])
+  @test a[coords] == trueparent(a)[coords]
+  @test getindex_count(a) == 4
+  coords = CartesianIndex.([(1,1),(3,1),(2,4),(4,4)])
+  @test a[coords,:] == trueparent(a)[coords,:]
+  @test getindex_count(a) == 6
+
+  b = _DiskArray(zeros(4,5,1),chunksize = (4,1,1))
+  b[[1,4],[2,5],1] = ones(2,2)
+  @test setindex_count(b) == 2
+  mask = falses(4,5,1)
+  mask[2,1] = true
+  mask[3,1] = true
+  mask[1,3] = true
+  mask[4,3] = true
+  b[mask] = fill(2.0,4)
+  @test setindex_count(b) == 4
+end
+
 @testset "Array methods" begin
   a = collect(reshape(1:90,10,9))
   a_disk = _DiskArray(a, chunksize=(5,3))

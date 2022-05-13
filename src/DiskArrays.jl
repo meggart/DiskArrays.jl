@@ -56,7 +56,7 @@ Base.eltype(::AbstractDiskArray{T}) where T = T
 
 function getindex_disk(a, i...)
   if any(j->isa(j,AbstractArray) && !isa(j,AbstractRange), i)
-    to_batchgetindex(a,i...)
+    batchgetindex(a,i...)
   else
     inds, trans = interpret_indices_disk(a,i)
     data = Array{eltype(a)}(undef, map(length,inds)...)
@@ -69,10 +69,14 @@ setindex_disk!(a::AbstractDiskArray{T},v::T,i...) where T<:AbstractArray =
   setindex_disk!(a,[v],i...)
   
 function setindex_disk!(a::AbstractDiskArray,v::AbstractArray,i...)
-  inds, trans = interpret_indices_disk(a,i)
-  data = reshape(v,map(length,inds))
-  writeblock!(a,data,inds...)
-  v
+  if any(j->isa(j,AbstractArray) && !isa(j,AbstractRange), i)
+    batchsetindex!(a,v,i...)
+  else
+    inds, trans = interpret_indices_disk(a,i)
+    data = reshape(v,map(length,inds))
+    writeblock!(a,data,inds...)
+    v
+  end
 end
 
 """
@@ -220,17 +224,11 @@ Base.setindex!(a::$t,v::AbstractArray,i...) =
 Base.setindex!(a::$t{<:Any,N}, v, i...) where N =
   Base.setindex!(a,fill(v,ntuple(i->1,N)...), i...)
 
-#Special care must be taken for logical indexing, we can not avoid reading the data
-#before writing
-function Base.setindex!(a::$t,v::AbstractArray,i::AbstractArray{<:Bool})
-  inds, trans = interpret_indices_disk(a,(i,))
-  data = Array{eltype(a)}(undef, map(length,inds)...)
-  readblock!(a,data,inds...)
-
-  data = reshape(v,map(length,inds))
-  writeblock!(a,data,inds...)
-  v
-end
+ function Base.setindex!(a::$t,v::AbstractArray,i::ChunkIndex)
+    cs = eachchunk(a)
+    inds = cs[i.I]
+    setindex_disk!(a,v,inds...)
+  end
 end
 end
 

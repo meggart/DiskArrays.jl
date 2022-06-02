@@ -1,7 +1,6 @@
 struct ReIndexer{I}
     inds::Val{I}
 end
-indmask(::ReIndexer{I}) where I = I
 struct Colon_From{N} end
 getind(_, i, j) = last(i)[j]
 getind(data, i, ::Colon_From{N}) where N = shrinkaxis(first(i)[N],axes(data,N))

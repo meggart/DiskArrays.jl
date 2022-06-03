@@ -7,6 +7,9 @@ function eachchunk end
 
 abstract type ChunkType <: AbstractVector{UnitRange} end
 
+findchunk(a::ChunkType,i::AbstractUnitRange) = findchunk(a,first(i)):findchunk(a,last(i))
+findchunk(a::ChunkType,::Colon) = 1:length(a)
+
 """
     RegularChunks <: ChunkType
 
@@ -70,7 +73,7 @@ max_chunksize(r::RegularChunks) = r.cs
 Defines chunks along a dimension where chunk sizes are not constant but arbitrary
 """
 struct IrregularChunks <: ChunkType
-    offsets::Vector{Int}
+  offsets::Vector{Int}
 end
 
 """
@@ -84,27 +87,22 @@ function IrregularChunks(; chunksizes)
     return IrregularChunks(offs)
 end
 
-# Base methods
-
-function Base.getindex(r::IrregularChunks, i::Int)
-    @boundscheck checkbounds(r, i)
-    return (r.offsets[i] + 1):r.offsets[i + 1]
+function Base.getindex(r::IrregularChunks,i::Int) 
+  @boundscheck checkbounds(r, i)
+  (r.offsets[i]+1):r.offsets[i+1]
 end
-Base.size(r::IrregularChunks) = (length(r.offsets) - 1,)
-
-# DiskArrays interface
-
+Base.size(r::IrregularChunks) = (length(r.offsets)-1,)
 function subsetchunks(r::IrregularChunks, subs::UnitRange)
-    c1 = searchsortedfirst(r.offsets, first(subs)) - 1
-    c2 = searchsortedfirst(r.offsets, last(subs))
-    offsnew = r.offsets[c1:c2]
-    firstoffset = first(subs) - r.offsets[c1] - 1
-    offsnew[end] = last(subs)
-    offsnew[2:end] .= offsnew[2:end] .- firstoffset
-    offsnew .= offsnew .- first(offsnew)
-    return IrregularChunks(offsnew)
+  c1 = findchunk(r,first(subs))
+  c2 = findchunk(r,last(subs))
+  offsnew = r.offsets[c1:c2+1]
+  firstoffset = first(subs)-r.offsets[c1]-1
+  offsnew[end] = last(subs)
+  offsnew[2:end] .= offsnew[2:end] .- firstoffset
+  offsnew .= offsnew .- first(offsnew)
+  IrregularChunks(offsnew)
 end
-findchunk(r::IrregularChunks, i::Int) = searchsortedfirst(r.offsets, i) - 1
+findchunk(r::IrregularChunks,i::Int) = searchsortedfirst(r.offsets, i)-1
 function approx_chunksize(r::IrregularChunks)
     return round(Int, sum(diff(r.offsets)) / (length(r.offsets) - 1))
 end
@@ -225,6 +223,40 @@ struct Unchunked end
 function haschunks end
 haschunks(x) = Unchunked()
 
+
+struct OffsetChunks end
+struct OneBasedChunks end
+wrapchunk(::OneBasedChunks,x,_) = x
+wrapchunk(::OffsetChunks,x,inds) = OffsetArray(x,inds...)
+
+"""
+    ChunkIndex{N}
+
+This can be used in indexing operations when one wants to extract a full data chunk from a DiskArray. Useful for 
+iterating over chunks of data. d[ChunkIndex(1,1)] will extract the first chunk of a 2D-DiskArray
+"""
+struct ChunkIndex{N,O}
+  I::CartesianIndex{N}
+  chunktype::O
+end
+ChunkIndex(i::CartesianIndex;offset=false) = ChunkIndex(i,offset ? OffsetChunks() : OneBasedChunks())
+ChunkIndex(i::Integer...;offset=false) = ChunkIndex(CartesianIndex(i);offset)
+
+
+"""
+    ChunkIndices{N}
+
+Represents an iterator 
+"""
+struct ChunkIndices{N,RT<:Tuple{Vararg{Any,N}},O} <: AbstractArray{ChunkIndex{N},N}
+  I::RT
+  chunktype::O
+end
+Base.size(i::ChunkIndices) = length.(i.I)
+Base.getindex(A::ChunkIndices{N}, I::Vararg{Int, N}) where N = ChunkIndex(CartesianIndex(getindex.(A.I,I)),A.chunktype)
+Base.eltype(::Type{<:ChunkIndices{N}}) where N  = ChunkIndex{N}
+
+
 """
     element_size(a::AbstractArray)
 
@@ -258,3 +290,5 @@ function estimate_chunksize(s, si)
     end
     return GridChunks(s, cs)
 end
+
+include("batchgetindex.jl")

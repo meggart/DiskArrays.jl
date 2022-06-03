@@ -1,10 +1,9 @@
 module DiskArrays
+export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
 
-export AbstractDiskArray, interpret_indices_disk
 
 include("diskarray.jl")
 include("array.jl")
-include("chunks.jl")
 include("broadcast.jl")
 include("iterator.jl")
 include("mapreduce.jl")

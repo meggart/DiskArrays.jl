@@ -337,10 +337,19 @@ end
   coords = CartesianIndex.([(1,1,1),(3,1,1),(2,4,1),(4,4,1)])
   @test a[coords] == trueparent(a)[coords]
   @test getindex_count(a) == 4
+
+  aperm = permutedims(a, (2, 1, 3))
+  coordsperm = coords .|> x -> x.I[[2, 1, 3]] |> CartesianIndex
+  @test aperm[coordsperm] == a[coords]
+
   coords = CartesianIndex.([(1,1),(3,1),(2,4),(4,4)])
   @test a[coords,:] == trueparent(a)[coords,:]
   @test getindex_count(a) == 6
-  
+
+  aperm = permutedims(a, (2, 1, 3))
+  coordsperm = coords .|> x -> x.I[[2, 1]] |> CartesianIndex
+  @test aperm[coordsperm, :] == a[coords, :]
+
   #With pre-allocated output array
   aout = zeros(Int,4,2)
   DiskArrays.disk_getindex_batch!(aout,a,[(1:4,1,1),(1:4,4,1)])
@@ -363,16 +372,12 @@ end
   mask[4,3] = true
   b[mask] = fill(2.0,4)
   @test setindex_count(b) == 4
-
-
-
-
 end
 
 
 @testset "Array methods" begin
     a = collect(reshape(1:90, 10, 9))
-    a_disk = _DiskArray(a; chunksize=(5, 3))
+    a_disk = _DiskArray(a; chunksize = (5, 3))
     ei = eachindex(a_disk)
     @test ei isa DiskArrays.BlockedIndices
     @test length(ei) == 90

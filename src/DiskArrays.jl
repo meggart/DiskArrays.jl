@@ -1,7 +1,6 @@
 module DiskArrays
 export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
 
-
 include("diskarray.jl")
 include("array.jl")
 include("broadcast.jl")

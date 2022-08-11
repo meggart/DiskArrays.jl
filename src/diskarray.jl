@@ -63,7 +63,7 @@ The function returns two values:
   the actual shape that represents the Base getindex behavior.
 """
 function interpret_indices_disk(A, r::Tuple)
-    throw(ArgumentError("Indices of type $(typeof(r)) are not yet "))
+    throw(ArgumentError("Indices of type $(typeof(r)) are not yet supported"))
 end
 
 #Read the entire array and reshape to 1D in the end

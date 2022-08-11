@@ -1,3 +1,9 @@
+```@meta
+CurrentModule = DiskArrays
+```
+
 # DiskArrays
 
-*Documentation goes here.*
+```@autodocs
+Modules = [DiskArrays]
+```

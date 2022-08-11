@@ -1,4 +1,12 @@
 module DiskArrays
+
+# Use the README as the module docs
+@doc let
+    path = joinpath(dirname(@__DIR__), "README.md")
+    include_dependency(path)
+    read(path, String)
+end DiskArrays
+
 export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
 
 include("diskarray.jl")

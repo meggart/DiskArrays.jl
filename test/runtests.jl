@@ -347,7 +347,7 @@ end
     @test getindex_count(a) == 10
 
     aperm = permutedims(a, (2, 1, 3))
-    coordsperm = x -> CartesianIndex(coords)(x.I[[2, 1]])
+    coordsperm = (x -> CartesianIndex((x.I[[2, 1]]))).(coords)
     @test aperm[coordsperm, :] == a[coords, :]
 
     #With pre-allocated output array

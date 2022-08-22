@@ -1,12 +1,10 @@
 # DiskArrays.jl
 
-![Lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)<!--
-![Lifecycle](https://img.shields.io/badge/lifecycle-stable-green.svg)
-![Lifecycle](https://img.shields.io/badge/lifecycle-retired-orange.svg)
-![Lifecycle](https://img.shields.io/badge/lifecycle-archived-red.svg)
-![Lifecycle](https://img.shields.io/badge/lifecycle-dormant-blue.svg) -->
-[![Build Status][ci-img]][ci-url]
-[![codecov.io][codecov-img]][codecov-url]
+![Lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)
+[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://meggart.github.io/DiskArrays.jl/stable)
+[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://meggart.github.io/DiskArrays.jl/dev)
+[![CI](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/meggart/DiskArrays.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/meggart/DiskArrays.jl)
 
 This package is an attempt to collect utilities for working with n-dimensional array-like data
 structures that do not have considerable overhead for single read operations. Most important

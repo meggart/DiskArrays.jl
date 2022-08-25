@@ -26,7 +26,8 @@ values (including basic things like `getindex`, `show`, `reduce`, etc...). Curre
 There are basically two ways to use this package.
 Either one makes the abstraction directly a subtype of `AbstractDiskArray` which requires
 to implement a single `readblock!` method that reads a Cartesian range of data points.
-The remaining `getindex` methods will come for free then. The second way is to use
+The remaining `getindex` methods will 
+come for free then. The second way is to use
 the `interpret_indices_disk` function to get a translation of the user-supplied indices
 into a set of ranges and then use these to read the data from disk.
 

@@ -23,6 +23,7 @@ should be supported as well.
 function writeblock!() end
 
 function getindex_disk(a, i...)
+    checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
         batchgetindex(a, i...)
     else
@@ -34,10 +35,12 @@ function getindex_disk(a, i...)
 end
 
 function setindex_disk!(a::AbstractDiskArray{T}, v::T, i...) where {T<:AbstractArray}
+    checkscalar(i)
     return setindex_disk!(a, [v], i...)
 end
 
 function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
+    checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
         batchsetindex!(a, v, i...)
     else
@@ -47,6 +50,7 @@ function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
         v
     end
 end
+
 
 """
 Function that translates a list of user-supplied indices into plain ranges and
@@ -171,9 +175,8 @@ include("chunks.jl")
 
 macro implement_getindex(t)
     quote
-        function Base.getindex(a::$t, i...)
-            return getindex_disk(a, i...)
-        end
+        Base.getindex(a::$t, i...) = getindex_disk(a, i...)
+
         function Base.getindex(a::$t, i::ChunkIndex)
             cs = eachchunk(a)
             inds = cs[i.I]
@@ -189,7 +192,7 @@ end
 
 macro implement_setindex(t)
     quote
-        Base.setindex!(a::$t, v::AbstractArray, i...) = setindex_disk!(a, v, i...)
+        Base.setindex!(a::$t, v, i...) = setindex_disk!(a, v, i...)
 
         # Add an extra method if a single number is given
         function Base.setindex!(a::$t{<:Any,N}, v, i...) where {N}

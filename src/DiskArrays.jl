@@ -9,6 +9,7 @@ end DiskArrays
 
 export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
 
+include("scalar.jl")
 include("diskarray.jl")
 include("array.jl")
 include("broadcast.jl")

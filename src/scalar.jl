@@ -1,4 +1,3 @@
-
 # Manual control over scalar indexing
 const ALLOW_SCALAR = Ref{Bool}(true)
 

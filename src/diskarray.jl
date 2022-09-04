@@ -25,8 +25,7 @@ function writeblock!() end
 function getindex_disk(a, i...)
     checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
-        batchgetindex(a, i...)
-    else
+        batchgetindex(a, i...) else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)
         readblock!(a, data, inds...)
@@ -192,7 +191,7 @@ end
 
 macro implement_setindex(t)
     quote
-        Base.setindex!(a::$t, v, i...) = setindex_disk!(a, v, i...)
+        Base.setindex!(a::$t, v::AbstractArray, i...) = setindex_disk!(a, v, i...)
 
         # Add an extra method if a single number is given
         function Base.setindex!(a::$t{<:Any,N}, v, i...) where {N}

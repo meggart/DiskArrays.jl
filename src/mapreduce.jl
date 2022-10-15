@@ -26,7 +26,7 @@ macro implement_mapreduce(t)
 
         function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t)
             cc = eachchunk(itr)
-            isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, IteratorEltype(itr))
+            isempty(cc) && return Base.mapreduce_empty_iter(f, op, itr, Base.IteratorEltype(itr))
             return Base.mapfoldl_impl(f, op, nt, itr, cc)
         end
         function Base.mapfoldl_impl(f, op, nt::NamedTuple{()}, itr::$t, cc)

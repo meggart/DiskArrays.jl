@@ -40,7 +40,9 @@ macro implement_iteration(t)
         Base.eachindex(a::$t) = BlockedIndices(eachchunk(a))
         function Base.iterate(a::$t)
             bi = BlockedIndices(eachchunk(a))
-            innernow, (chunkiter, innerinds) = iterate(bi)
+            it = iterate(bi)
+            isnothing(it) && return nothing
+            innernow, (chunkiter, innerinds) = it
             curchunk = innerinds.itr.indices
             datacur = OffsetArray(a[curchunk...], innerinds.itr)
             return datacur[innernow], (datacur, bi, (chunkiter, innerinds))

@@ -189,7 +189,7 @@ function writeblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
         return largest_jump > cs && length(ids) / (ma - mi) < 0.5
     end
     if any(need_batch)
-        batchsetindex!(a, v, i...)
+        batchsetindex!(A, A_ret, r...)
     else
         mi, ma = map(minimum, r), map(maximum, r)
         A_temp = similar(A_ret, map((a, b) -> b - a + 1, mi, ma))

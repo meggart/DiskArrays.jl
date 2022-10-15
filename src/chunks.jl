@@ -7,7 +7,7 @@ function eachchunk end
 
 abstract type ChunkType <: AbstractVector{UnitRange} end
 
-findchunk(a::ChunkType, i::AbstractUnitRange) = findchunk(a, first(i)):findchunk(a, last(i))
+findchunk(a::ChunkType, i::AbstractUnitRange) = findchunk(a, first(i))::Int:findchunk(a, last(i))::Int
 findchunk(a::ChunkType, ::Colon) = 1:length(a)
 
 """
@@ -49,14 +49,14 @@ function subsetchunks(r::RegularChunks, subs::AbstractRange)
         newcs = r.cs ÷ abs(step(subs))
         if step(subs) > 0
             newoffset = mod(first(subs) - 1 + r.offset, r.cs) ÷ step(subs)
-            RegularChunks(newcs, newoffset, length(subs))
+            return RegularChunks(newcs, newoffset, length(subs))
         elseif step(subs) < 0
-            r2 = subsetchunks(r, last(subs):first(subs))
+            r2 = subsetchunks(r, last(subs):first(subs))::ChunkType
             newoffset = (r.cs - length(last(r2))) ÷ (-step(subs))
-            RegularChunks(newcs, newoffset, length(subs))
+            return RegularChunks(newcs, newoffset, length(subs))
         end
     else
-        subsetchunks_fallback(r, subs)
+        return subsetchunks_fallback(r, subs)
     end
 end
 findchunk(r::RegularChunks, i::Int) = div(i + r.offset - 1, r.cs) + 1
@@ -155,19 +155,19 @@ function subsetchunks_fallback(r, subs)
         #Two affected chunks
         l1, l2 = rev ? (i2, i1) : (i1, i2)
         chunksize = max(cs[l1], cs[l2])
-        RegularChunks(chunksize, chunksize - cs[l1], length(subs))
+        return RegularChunks(chunksize, chunksize - cs[l1], length(subs))
     elseif all(==(cs[i1 + 1]), view(cs, (i1 + 1):(i2 - 1))) &&
         cs[i2] <= cs[i1 + 1] &&
         cs[i1] <= cs[i1 + 1]
         #All chunks have the same size, only first and last chunk can be shorter
         l1 = rev ? cs[i2] : cs[i1]
         chunksize = cs[i1 + 1]
-        RegularChunks(chunksize, chunksize - l1, length(subs))
+        return RegularChunks(chunksize, chunksize - l1, length(subs))
     else
         #Chunks are Irregular
         chunks = rev ? reverse(cs) : cs
 
-        IrregularChunks(; chunksizes=filter(!iszero, chunks))
+        return IrregularChunks(; chunksizes=filter(!iszero, chunks))
     end
 end
 

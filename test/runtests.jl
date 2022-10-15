@@ -3,6 +3,17 @@ using DiskArrays: ReshapedDiskArray, PermutedDiskArray
 using Test
 using Statistics
 
+@testset "allow_scalar" begin
+    DiskArrays.allow_scalar(false)
+    @test DiskArrays.can_scalar() == false
+    @test DiskArrays.checkscalar(Bool, 1, 2, 3) == false
+    @test DiskArrays.checkscalar(Bool, 1, 2:5, :) == true
+    DiskArrays.allow_scalar(true)
+    @test DiskArrays.can_scalar() == true
+    @test DiskArrays.checkscalar(Bool, 1, 2, 3) == true
+    @test DiskArrays.checkscalar(Bool, :, 2:5, 3) == true
+end
+
 # Define a data structure that can be used for testing
 struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
     getindex_count::Ref{Int}
@@ -74,6 +85,12 @@ function test_getindex(a)
     @test a[2:4:14] == [2, 6, 10, 14]
     # Test that readblock was called exactly onces for every getindex
     @test getindex_count(a) == 13
+    @testset "allow_scalar" begin
+        DiskArrays.allow_scalar(false)
+        @test_throws ErrorException a[2, 3, 1]
+        DiskArrays.allow_scalar(true)
+        @test a[2, 3, 1] == 10
+    end
 end
 
 function test_setindex(a)

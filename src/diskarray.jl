@@ -23,9 +23,9 @@ should be supported as well.
 function writeblock!() end
 
 function getindex_disk(a, i...)
+    checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
-        batchgetindex(a, i...)
-    else
+        batchgetindex(a, i...) else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)
         readblock!(a, data, inds...)
@@ -34,10 +34,12 @@ function getindex_disk(a, i...)
 end
 
 function setindex_disk!(a::AbstractDiskArray{T}, v::T, i...) where {T<:AbstractArray}
+    checkscalar(i)
     return setindex_disk!(a, [v], i...)
 end
 
 function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
+    checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
         batchsetindex!(a, v, i...)
     else
@@ -47,6 +49,7 @@ function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
         v
     end
 end
+
 
 """
 Function that translates a list of user-supplied indices into plain ranges and
@@ -171,9 +174,8 @@ include("chunks.jl")
 
 macro implement_getindex(t)
     quote
-        function Base.getindex(a::$t, i...)
-            return getindex_disk(a, i...)
-        end
+        Base.getindex(a::$t, i...) = getindex_disk(a, i...)
+
         function Base.getindex(a::$t, i::ChunkIndex)
             cs = eachchunk(a)
             inds = cs[i.I]

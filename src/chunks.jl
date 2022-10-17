@@ -148,25 +148,36 @@ function subsetchunks_fallback(r, subs)
     # Find first and last chunk where elements are extracted
     i1 = findfirst(!iszero, cs)
     i2 = findlast(!iszero, cs)
-    if i2 == i1
+    chunks = cs[i1:i2]
+    if rev
+        reverse!(chunks)
+    end
+    chunktype_from_chunksizes(chunks)
+end
+
+"""
+    chunktype_from_chunksizes(chunks)
+
+Utility function that constructs either a `RegularChunks` or an
+`IrregularChunks` object based on a vector of chunk sizes given as worted Integers. Wherever
+possible it will try to create a regular chunks object.  
+"""
+function chunktype_from_chunksizes(chunks)
+    if length(chunks) == 1
         #only a single chunk is affected
-        return RegularChunks(length(subs), 0, length(subs))
-    elseif i2 - i1 == 1
+        return RegularChunks(chunks[1], 0, chunks[1])
+    elseif length(chunks) == 2
         #Two affected chunks
-        l1, l2 = rev ? (i2, i1) : (i1, i2)
-        chunksize = max(cs[l1], cs[l2])
-        return RegularChunks(chunksize, chunksize - cs[l1], length(subs))
-    elseif all(==(cs[i1 + 1]), view(cs, (i1 + 1):(i2 - 1))) &&
-        cs[i2] <= cs[i1 + 1] &&
-        cs[i1] <= cs[i1 + 1]
+        chunksize = max(chunks[1], chunks[2])
+        return RegularChunks(chunksize, chunksize - chunks[1], sum(chunks))
+    elseif all(==(chunks[2]), view(chunks, (2):(length(chunks)-1))) &&
+        chunks[end] <= chunks[2] &&
+        chunks[1] <= chunks[2]
         #All chunks have the same size, only first and last chunk can be shorter
-        l1 = rev ? cs[i2] : cs[i1]
-        chunksize = cs[i1 + 1]
-        return RegularChunks(chunksize, chunksize - l1, length(subs))
+        chunksize = chunks[2]
+        return RegularChunks(chunksize, chunksize - chunks[1], sum(chunks))
     else
         #Chunks are Irregular
-        chunks = rev ? reverse(cs) : cs
-
         return IrregularChunks(; chunksizes=filter(!iszero, chunks))
     end
 end

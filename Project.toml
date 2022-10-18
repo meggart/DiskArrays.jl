@@ -1,7 +1,7 @@
 name = "DiskArrays"
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 authors = ["Fabian Gans <fgans@bgc-jena.mpg.de>"]
-version = "0.3.6"
+version = "0.3.7"
 
 [deps]
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"

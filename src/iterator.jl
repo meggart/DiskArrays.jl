@@ -50,14 +50,14 @@ macro implement_iteration(t)
         function Base.iterate(a::$t, i)
             datacur, bi, bstate = i
             (chunkiter, innerinds) = bstate
-            cistateold = chunkiter.taken
+            cistateold = length(chunkiter)
             biter = iterate(bi, bstate)
             if biter === nothing
                 return nothing
             end
             innernow, bstatenew = biter
             (chunkiter, innerinds) = bstatenew
-            if chunkiter.taken !== cistateold
+            if length(chunkiter) !== cistateold
                 curchunk = innerinds.itr.indices
                 datacur = OffsetArray(a[curchunk...], innerinds.itr)
             end

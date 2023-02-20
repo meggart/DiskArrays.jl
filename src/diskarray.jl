@@ -24,7 +24,7 @@ function writeblock!() end
 
 function getindex_disk(a, i...)
     checkscalar(i)
-    if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
+    if any(j -> isa(j, AbstractArray) && (length(j)>1) && !isa(j, AbstractRange), i)
         batchgetindex(a, i...) else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)

@@ -355,6 +355,7 @@ end
     @test a[coords] == trueparent(a)[coords]
     @test getindex_count(a) == 4
 
+
     aperm = permutedims(a, (2, 1, 3))
     coordsperm = (x -> CartesianIndex(x.I[[2, 1, 3]])).(coords)
     @test aperm[coordsperm] == a[coords]
@@ -362,6 +363,9 @@ end
     coords = CartesianIndex.([(1, 1), (3, 1), (2, 4), (4, 4)])
     @test a[coords, :] == trueparent(a)[coords, :]
     @test getindex_count(a) == 10
+
+    @test a[3:4,[1,4],1] == trueparent(a)[3:4, [1, 4], 1]
+    @test getindex_count(a) == 12
 
     aperm = permutedims(a, (2, 1, 3))
     coordsperm = (x -> CartesianIndex((x.I[[2, 1]]))).(coords)

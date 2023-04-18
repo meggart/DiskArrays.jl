@@ -129,6 +129,7 @@ splittuple(x1, xr...) = x1, xr
 # Implementation macro
 
 macro implement_broadcast(t)
+    t = esc(t)
     quote
         # Broadcasting with a DiskArray on LHS
         function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})

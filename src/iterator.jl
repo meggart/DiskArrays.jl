@@ -36,6 +36,7 @@ end
 # Implementaion macros
 
 macro implement_iteration(t)
+    t = esc(t)
     quote
         Base.eachindex(a::$t) = BlockedIndices(eachchunk(a))
         function Base.iterate(a::$t)

@@ -39,6 +39,7 @@ _getiperm(::PermutedDimsArray{<:Any,<:Any,<:Any,iperm}) where {iperm} = iperm
 # Implementaion macros
 
 macro implement_permutedims(t)
+    t = esc(t)
     quote
         Base.permutedims(parent::$t, perm) = permutedims_disk(parent, perm)
     end

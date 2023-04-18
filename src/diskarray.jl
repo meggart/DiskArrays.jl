@@ -173,6 +173,7 @@ _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
 include("chunks.jl")
 
 macro implement_getindex(t)
+    t = esc(t)
     quote
         Base.getindex(a::$t, i...) = getindex_disk(a, i...)
 
@@ -190,6 +191,7 @@ macro implement_getindex(t)
 end
 
 macro implement_setindex(t)
+    t = esc(t)
     quote
         Base.setindex!(a::$t, v::AbstractArray, i...) = setindex_disk!(a, v, i...)
 

@@ -2,6 +2,7 @@
 # Implementation macro
 
 macro implement_mapreduce(t)
+    t = esc(t)
     quote
         function Base._mapreduce(f, op, v::$t)
             mapreduce(op, eachchunk(v)) do cI

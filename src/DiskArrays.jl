@@ -22,6 +22,7 @@ include("subarray.jl")
 # The all-in-one macro
 
 macro implement_diskarray(t)
+    t = esc(t)
     quote
         @implement_getindex $t
         @implement_setindex $t
@@ -31,6 +32,8 @@ macro implement_diskarray(t)
         @implement_reshape $t
         @implement_array_methods $t
         @implement_permutedims $t
+        @implement_batchgetindex $t
+        @implement_subarray $t
     end
 end
 

@@ -1,5 +1,6 @@
 
 macro implement_array_methods(t)
+    t = esc(t)
     quote
         Base.Array(a::$t) = DiskArrays._Array(a)
         Base.copyto!(dest::$t, source::AbstractArray) = DiskArrays._copyto!(dest, source)

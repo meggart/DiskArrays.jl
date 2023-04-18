@@ -3,11 +3,6 @@ struct SubDiskArray{T,N} <: AbstractDiskArray{T,N}
 end
 
 # Base methods
-function Base.view(a::AbstractDiskArray, i...)
-    i2 = _replace_colon.(size(a), i)
-    return SubDiskArray(SubArray(a, i2))
-end
-Base.view(a::AbstractDiskArray, i::CartesianIndices) = view(a, i.indices...)
 function Base.view(a::SubDiskArray, i...)
     return SubDiskArray(view(a.v, i...))
 end
@@ -42,3 +37,16 @@ function eachchunk_view(::Chunked, vv)
 end
 eachchunk_view(::Unchunked, a) = estimate_chunksize(a)
 haschunks(a::SubDiskArray) = haschunks(parent(a.v))
+
+# Implementaion macro
+
+macro implement_subarray(t)
+    t = esc(t)
+    quote
+        function Base.view(a::$t, i...)
+            i2 = _replace_colon.(size(a), i)
+            return SubDiskArray(SubArray(a, i2))
+        end
+        Base.view(a::$t, i::CartesianIndices) = view(a, i.indices...)
+    end
+end

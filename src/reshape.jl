@@ -75,6 +75,7 @@ _ttgi(o, t, i1) = (o..., t[i1])
 # Implementaion macro
 
 macro implement_reshape(t)
+    t = esc(t)
     quote
         function Base._reshape(parent::$t, dims::NTuple{N,Int}) where {N}
             return reshape_disk(parent, dims)

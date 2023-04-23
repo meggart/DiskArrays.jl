@@ -163,7 +163,7 @@ end
 shrinkaxis(a::Int, _) = a
 
 # Define fallbacks for reading and writing sparse data
-function _readblock!(A, A_ret, r::AbstractVector...)
+function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     #Check how sparse the vectors are, we look at the largest stride in the inputs
     need_batch = map(approx_chunksize(eachchunk(A)), r) do cs, ids
         length(ids) == 1 && return false
@@ -182,7 +182,7 @@ function _readblock!(A, A_ret, r::AbstractVector...)
     return nothing
 end
 
-function _writeblock!(A, A_ret, r::AbstractVector...)
+function _writeblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     #Check how sparse the vectors are, we look at the largest stride in the inputs
     need_batch = map(approx_chunksize(eachchunk(A)), r) do cs, ids
         length(ids) == 1 && return false
@@ -205,11 +205,11 @@ macro implement_batchgetindex(t)
     t = esc(t)
     quote
         # Define fallbacks for reading and writing sparse data
-        function readblock!(A::$t, A_ret, r::AbstractVector...)
+        function DiskArrays.readblock!(A::$t, A_ret, r::AbstractVector...)
             _readblock!(A, A_ret, r...)
         end
 
-        function writeblock!(A::$t, A_ret, r::AbstractVector...)
+        function DiskArrays.writeblock!(A::$t, A_ret, r::AbstractVector...)
             _writeblock!(A, A_ret, r...)
         end
     end

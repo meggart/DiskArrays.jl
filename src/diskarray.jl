@@ -33,12 +33,12 @@ function getindex_disk(a, i...)
     end
 end
 
-function setindex_disk!(a::AbstractDiskArray{T}, v::T, i...) where {T<:AbstractArray}
+function setindex_disk!(a::AbstractArray{T}, v::T, i...) where {T<:AbstractArray}
     checkscalar(i)
     return setindex_disk!(a, [v], i...)
 end
 
-function setindex_disk!(a::AbstractDiskArray, v::AbstractArray, i...)
+function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
     checkscalar(i)
     if any(j -> isa(j, AbstractArray) && !isa(j, AbstractRange), i)
         batchsetindex!(a, v, i...)

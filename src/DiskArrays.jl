@@ -32,8 +32,8 @@ macro implement_diskarray(t)
         @implement_reshape $t
         @implement_array_methods $t
         @implement_permutedims $t
-        @implement_batchgetindex $t
         @implement_subarray $t
+        @implement_batchgetindex $t
     end
 end
 

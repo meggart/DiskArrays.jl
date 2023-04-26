@@ -118,7 +118,7 @@ end
 
 function disk_getindex_batch(ar, indstoread)
     prep = prepare_disk_getindex_batch(ar, indstoread)
-    outar = OffsetArray(zeros(eltype(ar), prep.outsize...),prep.offsets...)
+    outar = OffsetArray(Array{eltype(ar)}(undef, prep.outsize...),prep.offsets...)
     return disk_getindex_batch!(outar, ar, indstoread; prep=prep)
 end
 

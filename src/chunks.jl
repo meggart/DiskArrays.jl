@@ -129,6 +129,8 @@ function Base.getindex(g::GridChunks{N}, i::Vararg{Int,N}) where {N}
 end
 Base.size(g::GridChunks) = length.(g.chunks)
 
+Base.:(==)(g1::GridChunks, g2::GridChunks) = g1.chunks == g2.chunks
+
 function subsetchunks_fallback(r, subs)
     #This is a fallback method that should work for Regular and Irregular chunks r 
     #Assuming the desired subset is sorted

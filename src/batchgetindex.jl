@@ -76,10 +76,11 @@ function prepare_disk_getindex_batch(ar, indstoread)
     i1 = first(indstoread)
     inserts = getrangeinsert(i1)
     inds = collect(Any, 1:ndims(indstoread))
+    offsets = zeros(Int,ndims(indstoread))
     for i in inserts
         insert!(inds, last(i), Colon_From{first(i)}())
+        insert!(offsets,last(i),first(i1[first(i)])-1)
     end
-
     outindexer = ReIndexer(Val((inds...,)))
     it = eltype(indstoread)
     affected_chunk_dict = Dict{
@@ -98,7 +99,7 @@ function prepare_disk_getindex_batch(ar, indstoread)
     for (iax, iins) in inserts
         insert!(outsize, iins, length(i1[iax]))
     end
-    return (; outsize, affected_chunk_dict, indexer=outindexer)
+    return (; outsize, offsets, affected_chunk_dict, indexer=outindexer)
 end
 
 function disk_getindex_batch!(outar, ar, indstoread; prep=nothing)
@@ -112,19 +113,20 @@ function disk_getindex_batch!(outar, ar, indstoread; prep=nothing)
         data = ar[chunk]
         filldata!(outar, data, inds, prep.indexer)
     end
-    return outar
+    return parent(outar)
 end
 
 function disk_getindex_batch(ar, indstoread)
     prep = prepare_disk_getindex_batch(ar, indstoread)
-    outar = zeros(eltype(ar), prep.outsize...)
+    outar = OffsetArray(Array{eltype(ar)}(undef, prep.outsize...),prep.offsets...)
     return disk_getindex_batch!(outar, ar, indstoread; prep=prep)
 end
 
 function filldata!(outar, data, inds, ::ReIndexer{M}) where {M}
     for i in inds
         inew = map(j -> getind(data, i, j), M)
-        outar[inew...] = data[shrinkaxis.(i[1], axes(data))...]
+        tofill = data[shrinkaxis.(i[1], axes(data))...]
+        outar[inew...] = tofill
     end
 end
 
@@ -161,7 +163,7 @@ end
 shrinkaxis(a::Int, _) = a
 
 # Define fallbacks for reading and writing sparse data
-function readblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
+function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     #Check how sparse the vectors are, we look at the largest stride in the inputs
     need_batch = map(approx_chunksize(eachchunk(A)), r) do cs, ids
         length(ids) == 1 && return false
@@ -180,7 +182,7 @@ function readblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
     return nothing
 end
 
-function writeblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
+function _writeblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     #Check how sparse the vectors are, we look at the largest stride in the inputs
     need_batch = map(approx_chunksize(eachchunk(A)), r) do cs, ids
         length(ids) == 1 && return false
@@ -197,4 +199,18 @@ function writeblock!(A::AbstractDiskArray, A_ret, r::AbstractVector...)
         writeblock!(A, A_temp, map(:, mi, ma)...)
     end
     return nothing
+end
+
+macro implement_batchgetindex(t)
+    t = esc(t)
+    quote
+        # Define fallbacks for reading and writing sparse data
+        function DiskArrays.readblock!(A::$t, A_ret, r::AbstractVector...)
+            _readblock!(A, A_ret, r...)
+        end
+
+        function DiskArrays.writeblock!(A::$t, A_ret, r::AbstractVector...)
+            _writeblock!(A, A_ret, r...)
+        end
+    end
 end

@@ -15,13 +15,17 @@ using Statistics
 end
 
 # Define a data structure that can be used for testing
-struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractDiskArray{T,N}
+struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractArray{T,N}
     getindex_count::Ref{Int}
     setindex_count::Ref{Int}
     parent::A
     chunksize::NTuple{N,Int}
 end
 _DiskArray(a; chunksize=size(a)) = _DiskArray(Ref(0), Ref(0), a, chunksize)
+
+# Apply the all in one macro rather than inheriting
+DiskArrays.@implement_diskarray _DiskArray
+
 Base.size(a::_DiskArray) = size(a.parent)
 DiskArrays.haschunks(::_DiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::_DiskArray) = DiskArrays.GridChunks(a, a.chunksize)
@@ -357,6 +361,7 @@ end
     @test a[coords] == trueparent(a)[coords]
     @test getindex_count(a) == 4
 
+
     aperm = permutedims(a, (2, 1, 3))
     coordsperm = (x -> CartesianIndex(x.I[[2, 1, 3]])).(coords)
     @test aperm[coordsperm] == a[coords]
@@ -364,6 +369,9 @@ end
     coords = CartesianIndex.([(1, 1), (3, 1), (2, 4), (4, 4)])
     @test a[coords, :] == trueparent(a)[coords, :]
     @test getindex_count(a) == 10
+
+    @test a[3:4,[1,4],1] == trueparent(a)[3:4, [1, 4], 1]
+    @test getindex_count(a) == 12
 
     aperm = permutedims(a, (2, 1, 3))
     coordsperm = (x -> CartesianIndex((x.I[[2, 1]]))).(coords)
@@ -520,3 +528,20 @@ end
     # a2 .= v2
     # @test all(Array(a2) .== (4:27) * vec(3:18)')
 end
+
+struct TestArray{T,N} <: AbstractArray{T,N} end
+
+@testset "All macros apply" begin
+    DiskArrays.@implement_getindex TestArray
+    DiskArrays.@implement_setindex TestArray
+    DiskArrays.@implement_broadcast TestArray
+    DiskArrays.@implement_iteration TestArray
+    DiskArrays.@implement_mapreduce TestArray
+    DiskArrays.@implement_reshape TestArray
+    DiskArrays.@implement_array_methods TestArray
+    DiskArrays.@implement_permutedims TestArray
+    DiskArrays.@implement_subarray TestArray
+    DiskArrays.@implement_batchgetindex TestArray
+    DiskArrays.@implement_diskarray TestArray
+end
+

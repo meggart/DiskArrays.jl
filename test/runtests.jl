@@ -79,7 +79,7 @@ function test_getindex(a)
     @test a[end:-1:1, 1, 1] == [4, 3, 2, 1]
     @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
     @test a[2,3,1,1:1] == [10]
-    @test a[2,3,1,[1],[1]] == [10;;]
+    @test a[2,3,1,[1],[1]] == fill(10,1,1)
     # Test bitmask indexing
     m = falses(4, 5, 1)
     m[2, :, 1] .= true

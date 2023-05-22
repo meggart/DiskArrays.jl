@@ -25,11 +25,7 @@ function writeblock!() end
 # This is for filtering "true" batch getindex functions with vector indexing from
 # excess singleton dimensions with values like [1] and 1:1
 function is_batch_arg(j::AbstractArray)
-    if length(j) == 1
-        first(j) == 1 ? false : throw(ArgumentError("Singleton dimension value is not equal to 1"))
-    else
-        return true
-    end
+    length(j) != 1
 end
 is_batch_arg(_) = false
 is_batch_arg(::AbstractRange) = false

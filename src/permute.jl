@@ -5,7 +5,8 @@ end
 # Base methods
 
 Base.size(r::PermutedDiskArray) = size(r.a)
-
+is_wrapper(::Type{<:PermutedDiskArray}) = true
+parent_type(::Type{<:PermutedDiskArray{<:Any,<:Any,P}}) where P = P
 # DiskArrays interface
 
 function permutedims_disk(a, perm)

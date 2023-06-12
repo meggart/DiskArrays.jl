@@ -1,5 +1,5 @@
-struct SubDiskArray{T,N} <: AbstractDiskArray{T,N}
-    v::SubArray{T,N}
+struct SubDiskArray{T,N,P,I,L} <: AbstractDiskArray{T,N}
+    v::SubArray{T,N,P,I,L}
 end
 
 # Base methods
@@ -9,6 +9,9 @@ end
 Base.view(a::SubDiskArray, i::CartesianIndices) = view(a, i.indices...)
 Base.size(a::SubDiskArray) = size(a.v)
 Base.parent(a::SubDiskArray) = a.v.parent
+
+is_wrapper(::Type{<:SubDiskArray}) = true
+parent_type(::Type{<:SubDiskArray{<:Any,<:Any,P}}) where P = P
 
 _replace_colon(s, ::Colon) = Base.OneTo(s)
 _replace_colon(s, r) = r

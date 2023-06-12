@@ -22,6 +22,10 @@ should be supported as well.
 """
 function writeblock!() end
 
+is_wrapper(a) = is_wrapper(typeof(a))
+is_wrapper(::Type{T}) where T = false
+
+
 # This is for filtering "true" batch getindex functions with vector indexing from
 # excess singleton dimensions with values like [1] and 1:1
 function is_batch_arg(j::AbstractArray)
@@ -31,10 +35,12 @@ is_batch_arg(_) = false
 is_batch_arg(::AbstractRange) = false
 
 
+
 function getindex_disk(a, i...)
     checkscalar(i)
     if any(is_batch_arg, i)
-        batchgetindex(a, i...) else
+        batchgetindex(a, i...)
+    else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)
         readblock!(a, data, inds...)
@@ -97,19 +103,19 @@ function interpret_indices_disk(
         resh = DimsDropper(findints(r))
         return inds, resh
     elseif ndims(A) < N
-        n_add_dim = sum((ndims(A) + 1):N) do i
+        n_add_dim = sum((ndims(A)+1):N) do i
             first(r[i]) == 1 || throw(BoundsError(A, r))
-            isa(r[i],AbstractArray)
+            isa(r[i], AbstractArray)
         end
         _, rshort = commonlength(size(A), r)
         inds, resh1 = interpret_indices_disk(A, rshort)
         if n_add_dim > 0
-            ladddim = ntuple(_->1,n_add_dim)
-            oldsize = result_size(inds,resh1)
-            resh2 = transformstack(resh1,Reshaper((oldsize...,ladddim...)))
-            inds,resh2
+            ladddim = ntuple(_ -> 1, n_add_dim)
+            oldsize = result_size(inds, resh1)
+            resh2 = transformstack(resh1, Reshaper((oldsize..., ladddim...)))
+            inds, resh2
         else
-            inds,resh1
+            inds, resh1
         end
     else
         size(A, N + 1) == 1 || throw(BoundsError(A, r))
@@ -136,7 +142,7 @@ function interpret_indices_disk(A, r::NTuple{1,AbstractVector})
     mi, ma = extrema(view(cartinds, lininds))
     inds = map((i1, i2) -> i1:i2, mi.I, ma.I)
     resh = a -> map(lininds) do ii
-        a[cartinds[ii] - mi + oneunit(mi)]
+        a[cartinds[ii]-mi+oneunit(mi)]
     end
     return inds, resh
 end
@@ -145,18 +151,18 @@ struct Reshaper{I}
     reshape_indices::I
 end
 (r::Reshaper)(a) = reshape(a, r.reshape_indices)
-result_size(_,r::Reshaper) = r.reshape_indices
+result_size(_, r::Reshaper) = r.reshape_indices
 struct DimsDropper{D}
     d::D
 end
 (d::DimsDropper)(a) = length(d.d) == ndims(a) ? a[1] : dropdims(a; dims=d.d)
-result_size(inds,d::DimsDropper) = getindex.(Ref(inds),filter(!in(d.d),ntuple(identity,length(inds))))
+result_size(inds, d::DimsDropper) = getindex.(Ref(inds), filter(!in(d.d), ntuple(identity, length(inds))))
 
 struct TransformStack{S}
     s::S
 end
-transformstack(_::Union{Reshaper,DimsDropper,typeof(identity)},s2::Reshaper) = s2
-transformstack(s...) = TransformStack(filter(!=(identity),s))
+transformstack(_::Union{Reshaper,DimsDropper,typeof(identity)}, s2::Reshaper) = s2
+transformstack(s...) = TransformStack(filter(!=(identity), s))
 (s::TransformStack)(a) = ∘(s.s...)(a)
 
 # function getbb(ar::AbstractArray{Bool})
@@ -237,3 +243,4 @@ end
 function Base.show(io::IO, X::AbstractDiskArray)
     return println(io, "Disk Array with size ", join(size(X), " x "))
 end
+

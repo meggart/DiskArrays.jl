@@ -139,7 +139,7 @@ macro implement_broadcast(t)
             end
             return dest
         end
-        Base.BroadcastStyle(T::Type{<:$t}) = ChunkStyle{ndims(T)}()
+        Base.BroadcastStyle(T::Type{<:$t}) = is_wrapper(T) ? Base.BroadcastStyle(Base.BroadcastStyle(parent_type(T)),ChunkStyle{ndims(T)}()) : ChunkStyle{ndims(T)}()
         function DiskArrays.subsetarg(x::$t, a)
             ashort = maybeonerange(size(x), a)
             return x[ashort...]

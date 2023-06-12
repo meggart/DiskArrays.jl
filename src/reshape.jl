@@ -17,6 +17,8 @@ end
 Base.size(r::ReshapedDiskArray) = r.newsize
 
 # DiskArrays interface
+is_wrapper(::Type{<:ReshapedDiskArray}) = true
+parent_type(::Type{<:ReshapedDiskArray{<:Any,<:Any,P}}) where P = P
 
 haschunks(a::ReshapedDiskArray) = haschunks(a.parent)
 function eachchunk(a::ReshapedDiskArray{<:Any,N}) where {N}

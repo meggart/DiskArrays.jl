@@ -14,6 +14,7 @@ using Statistics
     @test DiskArrays.checkscalar(Bool, :, 2:5, 3) == true
 end
 
+
 # Define a data structure that can be used for testing
 struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractArray{T,N}
     getindex_count::Ref{Int}
@@ -313,6 +314,7 @@ end
 @testset "AbstractDiskArray getindex" begin
     a = _DiskArray(reshape(1:20, 4, 5, 1))
     test_getindex(a)
+    test_getindex(a)
 end
 
 @testset "AbstractDiskArray setindex" begin
@@ -344,6 +346,21 @@ end
 @testset "Broadcast" begin
     a_disk1 = _DiskArray(rand(10, 9, 2); chunksize=(5, 3, 2))
     test_broadcast(a_disk1)
+end
+
+@testset "cat" begin
+    da = _DiskArray(reshape(1:24, 4, 6, 1))
+    a = view(da, :, 1:3, :) 
+    b = view(da, :, 4:6, :) 
+    ca = cat(a, b; dims=2)
+    @test ca == da
+    @test ca .* 2 == da .* 2
+
+    @test collect(cat(a, b; dims=1)) == cat(collect(a), collect(b); dims=1)
+    @test collect(cat(a, b; dims=2)) == cat(collect(a), collect(b); dims=2)
+    @test collect(cat(a, b; dims=3)) == cat(collect(a), collect(b); dims=3)
+    @test collect(cat(a, b; dims=4)) == cat(collect(a), collect(b); dims=4)
+    @test collect(cat(a, b; dims=5)) == cat(collect(a), collect(b); dims=5)
 end
 
 @testset "Broadcast with length 1 and 0 final dim" begin

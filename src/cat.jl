@@ -114,7 +114,7 @@ function mergechunks_irregular(a, b)
     IrregularChunks(chunksizes = filter(!iszero, [length.(a); length.(b)]))
 end
 
-function cat_disk(As::AbstractDiskArray...; dims::Int)
+function cat_disk(As::AbstractArray...; dims::Int)
     sz = map(ntuple(identity, dims)) do i
         i == dims ? length(As) : 1
     end
@@ -127,8 +127,9 @@ end
 macro implement_cat(t)
     t = esc(t)
     quote
-        function Base.cat(A1::$t, As::$t...; dims::Int)
-            return cat_disk(A1, As...; dims)
-        end
+        # Allow mixed lazy cat of other arrays and disk arrays to still be lazy
+        Base.cat(A1::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, As...; dims)
+        Base.cat(A1::AbstractArray, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
+        Base.cat(A1::$t, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
     end
 end

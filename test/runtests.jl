@@ -354,11 +354,19 @@ end
     @test ca == da
     @test ca .* 2 == da .* 2
 
-    @test collect(cat(a, b; dims=1)) == cat(collect(a), collect(b); dims=1)
-    @test collect(cat(a, b; dims=2)) == cat(collect(a), collect(b); dims=2)
-    @test collect(cat(a, b; dims=3)) == cat(collect(a), collect(b); dims=3)
-    @test collect(cat(a, b; dims=4)) == cat(collect(a), collect(b); dims=4)
-    @test collect(cat(a, b; dims=5)) == cat(collect(a), collect(b); dims=5)
+    @testset "cat on all dims" begin
+        @test collect(cat(a, b; dims=1)) == cat(collect(a), collect(b); dims=1)
+        @test collect(cat(a, b; dims=2)) == cat(collect(a), collect(b); dims=2)
+        @test collect(cat(a, b; dims=3)) == cat(collect(a), collect(b); dims=3)
+        @test collect(cat(a, b; dims=4)) == cat(collect(a), collect(b); dims=4)
+        @test collect(cat(a, b; dims=5)) == cat(collect(a), collect(b); dims=5)
+    end
+    @testset "cat mixed arrays and disk arrays is still a ConcatDiskArray" begin
+        @test cat(a, collect(b); dims=1) isa DiskArrays.ConcatDiskArray
+        @test collect(cat(a, collect(b); dims=1)) == cat(collect(a), collect(b); dims=1)
+        @test cat(collect(a), b; dims=1) isa DiskArrays.ConcatDiskArray
+        @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
+    end
 end
 
 @testset "Broadcast with length 1 and 0 final dim" begin

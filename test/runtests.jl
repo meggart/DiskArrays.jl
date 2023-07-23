@@ -14,7 +14,6 @@ using Statistics
     @test DiskArrays.checkscalar(Bool, :, 2:5, 3) == true
 end
 
-
 # Define a data structure that can be used for testing
 struct _DiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractArray{T,N}
     getindex_count::Ref{Int}
@@ -313,7 +312,6 @@ end
 
 @testset "AbstractDiskArray getindex" begin
     a = _DiskArray(reshape(1:20, 4, 5, 1))
-    test_getindex(a)
     test_getindex(a)
 end
 

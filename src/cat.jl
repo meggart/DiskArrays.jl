@@ -64,6 +64,19 @@ Base.size(a::ConcatDiskArray) = a.size
 
 function readblock!(a::ConcatDiskArray, aout, inds::AbstractUnitRange...)
     # Find affected blocks and indices in blocks
+    _concat_diskarray_block_io(a, inds...) do outer_range, array_range, I
+        aout[outer_range...] = a.parents[I][array_range...]
+    end
+end
+
+function writeblock!(a::ConcatDiskArray, aout, inds::AbstractUnitRange...)
+    _concat_diskarray_block_io(a, inds...) do outer_range, array_range, I
+        a.parents[I][array_range...] = aout[outer_range...]
+    end
+end
+
+function _concat_diskarray_block_io(f, a::ConcatDiskArray, inds...)
+    # Find affected blocks and indices in blocks
     blockinds = map(inds, a.startinds, size(a.parents)) do i, si, s
         bi1 = max(searchsortedlast(si, first(i)), 1)
         bi2 = min(searchsortedfirst(si, last(i) + 1) - 1, s)
@@ -78,12 +91,9 @@ function readblock!(a::ConcatDiskArray, aout, inds::AbstractUnitRange...)
         outer_range = map(cI.I, a.startinds, array_range, inds) do ii, si, ar, indstoread
             (first(ar)+si[ii]-first(indstoread)):(last(ar)+si[ii]-first(indstoread))
         end
-        aout[outer_range...] = a.parents[cI][array_range...]
+        # aout[outer_range...] = a.parents[cI][array_range...]
+        f(outer_range, array_range, cI)
     end
-end
-
-function writeblock!(a::ConcatDiskArray, aout, inds::AbstractUnitRange...)
-    error("No method yet for writing into a ConcatDiskArray")
 end
 
 haschunks(::ConcatDiskArray) = Chunked()

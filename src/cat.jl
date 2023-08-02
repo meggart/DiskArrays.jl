@@ -138,8 +138,12 @@ macro implement_cat(t)
     t = esc(t)
     quote
         # Allow mixed lazy cat of other arrays and disk arrays to still be lazy
+        # TODO this could be better. allowing non-AbstractDiskArray in
+        # the macro makes this kind of impossible to avoid dispatch problems
         Base.cat(A1::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, As...; dims)
         Base.cat(A1::AbstractArray, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
         Base.cat(A1::$t, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
+        Base.vcat(A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...) = cat_disk(A1, As...; dims=1)
+        Base.hcat(A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...) = cat_disk(A1, As...; dims=2)
     end
 end

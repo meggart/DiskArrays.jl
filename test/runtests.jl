@@ -347,7 +347,7 @@ end
 end
 
 @testset "cat" begin
-    da = _DiskArray(reshape(1:24, 4, 6, 1))
+    da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
     a = view(da, :, 1:3, :) 
     b = view(da, :, 4:6, :) 
     ca = cat(a, b; dims=2)
@@ -369,11 +369,17 @@ end
         @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
     end
 
+    @testset "write concat"
+        ca .= reshape(0:23, 4, 6)
+        @test sum(ca) == sum(0:23)
+    end
+
     @testset "cat mixed chunk size" begin
-        a = _DiskArray(1:10; chunksize=(3,))
-        b = _DiskArray(1:9; chunksize=(4,))
-        c = cat(a, b, a; dims=1)
-        @test c == [1:10; 1:9; 1:10]
+        a = _DiskArray(collect(1:10); chunksize=(3,))
+        b = _DiskArray(collect(1:9); chunksize=(4,))
+        c = _DiskArray(collect(1:7); chunksize=(3,))
+        d = cat(a, b, c; dims=1)
+        @test d == [1:10; 1:9; 1:7]
         @test DiskArrays.eachchunk(c) == [
              (1:3,)
              (4:6,)
@@ -387,6 +393,9 @@ end
              (26:28,)
              (29:29,)
         ]
+        d .= 1:26
+        @test d == 1:26
+        @test c == 20:26
     end
 end
 

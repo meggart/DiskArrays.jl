@@ -369,7 +369,7 @@ end
         @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
     end
 
-    @testset "write concat"
+   @testset "write concat" begin
         ca .= reshape(0:23, 4, 6)
         @test sum(ca) == sum(0:23)
     end
@@ -380,7 +380,7 @@ end
         c = _DiskArray(collect(1:7); chunksize=(3,))
         d = cat(a, b, c; dims=1)
         @test d == [1:10; 1:9; 1:7]
-        @test DiskArrays.eachchunk(c) == [
+        @test DiskArrays.eachchunk(d) == [
              (1:3,)
              (4:6,)
              (7:9,)
@@ -390,8 +390,7 @@ end
              (19:19,)
              (20:22,)
              (23:25,)
-             (26:28,)
-             (29:29,)
+             (26:26,)
         ]
         d .= 1:26
         @test d == 1:26

@@ -361,11 +361,32 @@ end
         @test collect(cat(a, b; dims=4)) == cat(collect(a), collect(b); dims=4)
         @test collect(cat(a, b; dims=5)) == cat(collect(a), collect(b); dims=5)
     end
+
     @testset "cat mixed arrays and disk arrays is still a ConcatDiskArray" begin
         @test cat(a, collect(b); dims=1) isa DiskArrays.ConcatDiskArray
         @test collect(cat(a, collect(b); dims=1)) == cat(collect(a), collect(b); dims=1)
         @test cat(collect(a), b; dims=1) isa DiskArrays.ConcatDiskArray
         @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
+    end
+
+    @testset "cat mixed chunk size" begin
+        a = _DiskArray(1:10; chunksize=(3,))
+        b = _DiskArray(1:9; chunksize=(4,))
+        c = cat(a, b, a; dims=1)
+        @test c == [1:10; 1:9; 1:10]
+        @test DiskArrays.eachchunk(c) == [
+             (1:3,)
+             (4:6,)
+             (7:9,)
+             (10:10,)
+             (11:14,)
+             (15:18,)
+             (19:19,)
+             (20:22,)
+             (23:25,)
+             (26:28,)
+             (29:29,)
+        ]
     end
 end
 

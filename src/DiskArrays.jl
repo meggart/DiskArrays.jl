@@ -18,6 +18,7 @@ include("mapreduce.jl")
 include("permute.jl")
 include("reshape.jl")
 include("subarray.jl")
+include("cat.jl")
 
 # The all-in-one macro
 
@@ -34,6 +35,7 @@ macro implement_diskarray(t)
         @implement_permutedims $t
         @implement_subarray $t
         @implement_batchgetindex $t
+        @implement_cat $t
     end
 end
 

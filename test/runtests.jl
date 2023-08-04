@@ -346,6 +346,58 @@ end
     test_broadcast(a_disk1)
 end
 
+@testset "cat" begin
+    da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
+    a = view(da, :, 1:3, :) 
+    b = view(da, :, 4:6, :) 
+    ca = cat(a, b; dims=2)
+    @test ca == da
+    @test ca .* 2 == da .* 2
+
+    @testset "cat on all dims" begin
+        @test collect(cat(a, b; dims=1)) == cat(collect(a), collect(b); dims=1)
+        @test collect(cat(a, b; dims=2)) == cat(collect(a), collect(b); dims=2)
+        @test collect(cat(a, b; dims=3)) == cat(collect(a), collect(b); dims=3)
+        @test collect(cat(a, b; dims=4)) == cat(collect(a), collect(b); dims=4)
+        @test collect(cat(a, b; dims=5)) == cat(collect(a), collect(b); dims=5)
+    end
+
+    @testset "cat mixed arrays and disk arrays is still a ConcatDiskArray" begin
+        @test cat(a, collect(b); dims=1) isa DiskArrays.ConcatDiskArray
+        @test collect(cat(a, collect(b); dims=1)) == cat(collect(a), collect(b); dims=1)
+        @test cat(collect(a), b; dims=1) isa DiskArrays.ConcatDiskArray
+        @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
+    end
+
+   @testset "write concat" begin
+        ca .= reshape(0:23, 4, 6)
+        @test sum(ca) == sum(0:23)
+    end
+
+    @testset "cat mixed chunk size" begin
+        a = _DiskArray(collect(1:10); chunksize=(3,))
+        b = _DiskArray(collect(1:9); chunksize=(4,))
+        c = _DiskArray(collect(1:7); chunksize=(3,))
+        d = cat(a, b, c; dims=1)
+        @test d == [1:10; 1:9; 1:7]
+        @test DiskArrays.eachchunk(d) == [
+             (1:3,)
+             (4:6,)
+             (7:9,)
+             (10:10,)
+             (11:14,)
+             (15:18,)
+             (19:19,)
+             (20:22,)
+             (23:25,)
+             (26:26,)
+        ]
+        d .= 1:26
+        @test d == 1:26
+        @test c == 20:26
+    end
+end
+
 @testset "Broadcast with length 1 and 0 final dim" begin
     a_disk1 = _DiskArray(rand(10, 9, 1); chunksize=(5, 3, 1))
     a_disk2 = _DiskArray(rand(1:10, 1, 9); chunksize=(1, 3))
@@ -434,9 +486,12 @@ end
     @test median(a_disk) == median(a)
     @test median(a_disk; dims=1) == median(a; dims=1) # Works but very slow
     @test median(a_disk; dims=2) == median(a; dims=2) # Works but very slow
-    @test_broken vcat(a_disk, a_disk) == vcat(a, a) # Wrong answer because `iterate` is broken
-    @test_broken hcat(a_disk, a_disk) == hcat(a, a) # Wrong answer because `iterate` is broken
-    @test_broken cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3) # Wrong answer because `iterate` is broken
+    @test collect(vcat(a_disk, a_disk)) == vcat(a, a) # Needs collect because `zip` is broken
+    @test collect(hcat(a_disk, a_disk)) == hcat(a, a) # Needs collect because `zip` is broken
+    @test collect(cat(a_disk, a_disk; dims=3)) == cat(a, a; dims=3) # Needs collect because `zip` is broken
+    @test_broken vcat(a_disk, a_disk) == vcat(a, a)
+    @test_broken hcat(a_disk, a_disk) == hcat(a, a)
+    @test_broken cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3)
     @test_broken circshift(a_disk, 2) == circshift(a, 2) # This one is super weird. The size changes.
 end
 

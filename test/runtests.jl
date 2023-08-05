@@ -486,12 +486,9 @@ end
     @test median(a_disk) == median(a)
     @test median(a_disk; dims=1) == median(a; dims=1) # Works but very slow
     @test median(a_disk; dims=2) == median(a; dims=2) # Works but very slow
-    @test collect(vcat(a_disk, a_disk)) == vcat(a, a) # Needs collect because `zip` is broken
-    @test collect(hcat(a_disk, a_disk)) == hcat(a, a) # Needs collect because `zip` is broken
-    @test collect(cat(a_disk, a_disk; dims=3)) == cat(a, a; dims=3) # Needs collect because `zip` is broken
-    @test_broken vcat(a_disk, a_disk) == vcat(a, a)
-    @test_broken hcat(a_disk, a_disk) == hcat(a, a)
-    @test_broken cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3)
+    @test vcat(a_disk, a_disk) == vcat(a, a)
+    @test hcat(a_disk, a_disk) == hcat(a, a)
+    @test cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3)
     @test_broken circshift(a_disk, 2) == circshift(a, 2) # This one is super weird. The size changes.
 end
 

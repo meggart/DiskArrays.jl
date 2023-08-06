@@ -25,6 +25,7 @@ include("zip.jl")
 # The all-in-one macro
 
 macro implement_diskarray(t)
+    # Need to do this for dispatch ambiguity
     t = esc(t)
     quote
         @implement_getindex $t
@@ -42,6 +43,17 @@ macro implement_diskarray(t)
     end
 end
 
-@implement_diskarray AbstractDiskArray
+# We need to skip the `implement_zip` macro for dispatch
+@implement_getindex AbstractDiskArray
+@implement_setindex AbstractDiskArray
+@implement_broadcast AbstractDiskArray
+@implement_iteration AbstractDiskArray
+@implement_mapreduce AbstractDiskArray
+@implement_reshape AbstractDiskArray
+@implement_array_methods AbstractDiskArray
+@implement_permutedims AbstractDiskArray
+@implement_subarray AbstractDiskArray
+@implement_batchgetindex AbstractDiskArray
+@implement_cat AbstractDiskArray
 
 end # module

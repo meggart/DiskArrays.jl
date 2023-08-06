@@ -55,8 +55,8 @@ function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{T,N},M}) where {T
 end
 function ConcatDiskArray(arrays::AbstractArray)
     # Validate array eltype and dimensionality
-    all(t -> t == eltype(first(arrays)), eltypes) || error("Arrays don't have the same element type")
-    all(s -> length(s) == ndims(first(arrays)), sizes) || error("Arrays don't have the same dimensions")
+    all(a -> eltype(a) == eltype(first(arrays)), arrays) || error("Arrays don't have the same element type")
+    all(a -> ndims(a) == ndims(first(arrays)), arrays) || error("Arrays don't have the same dimensions")
     error("Should not be reached")
 end
 

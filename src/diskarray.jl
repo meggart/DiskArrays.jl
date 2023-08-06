@@ -177,11 +177,13 @@ transformstack(s...) = TransformStack(filter(!=(identity),s))
 commonlength(a, b) = _commonlength((first(a),), (first(b),), Base.tail(a), Base.tail(b))
 commonlength(::Tuple{}, b) = (), ()
 commonlength(a, ::Tuple{}) = (), ()
+commonlength(a::Tuple{}, ::Tuple{}) = (), ()
 function _commonlength(a1, b1, a, b)
     return _commonlength((a1..., first(a)), (b1..., first(b)), Base.tail(a), Base.tail(b))
 end
 _commonlength(a1, b1, ::Tuple{}, b) = (a1, b1)
 _commonlength(a1, b1, a, ::Tuple{}) = (a1, b1)
+_commonlength(a1, b1, a::Tuple{}, ::Tuple{}) = (a1, b1)
 
 "Find the indices of elements containing integers in a Tuple"
 findints(x) = _findints((), 1, x...)

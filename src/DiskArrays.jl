@@ -1,5 +1,8 @@
 module DiskArrays
 
+# For ambiguity resolution only
+import SparseArrays, LinearAlgebra
+
 # Use the README as the module docs
 @doc let
     path = joinpath(dirname(@__DIR__), "README.md")

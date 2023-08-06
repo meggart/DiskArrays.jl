@@ -460,6 +460,8 @@ end
     a = collect(reshape(1:90, 10, 9))
     a_disk = _DiskArray(a; chunksize=(5, 3))
     @test [aa for aa in a_disk] == a
+    # Filtered generators dont work yet
+    @test_broken [aa for aa in a_disk if aa > 40] == [aa for aa in a if aa > 40] 
 end
 
 @testset "Array methods" begin

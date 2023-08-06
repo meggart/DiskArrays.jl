@@ -5,7 +5,6 @@ struct DiskGenerator{I,F}
 end
 # Copied from `iterate(::Generator, s...) in julia 1.9
 function Base.iterate(dg::DiskGenerator, s...)
-    @inline 
     y = iterate(dg.iter, s...)
     y === nothing && return nothing
     y = y::Tuple{Any, Any} # try to give inference some idea of what to expect about the behavior of the next line

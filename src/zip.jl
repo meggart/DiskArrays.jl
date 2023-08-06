@@ -18,6 +18,9 @@ Base.IteratorEltype(::Type{DiskZip{Is}}) where {Is<:Tuple} =
 # all arrays.
 
 function DiskZip(As::AbstractArray{<:Any,N}...) where N
+    map(As) do A
+        size(A) == size(first(As)) || throw(DimensionMismatch("Arrays zipped with disk arrays must be the same size"))
+    end
     # Get the chunkes of the first Chunked array
     chunks = reduce(As; init=nothing) do acc, A
         if isnothing(acc) && (haschunks(A) isa Chunked)

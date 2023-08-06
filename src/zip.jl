@@ -42,12 +42,12 @@ end
 DiskZip(As...) = throw(ArgumentError("zip on disk arrays only works with other same-sized AbstractArray"))
 
 # Collect zipped disk arrays in the right order
-function Base.collect(z::DiskZip)
-    out = similar(first(z.is), eltype(z))
-    itr = iterate(z)
-    for I in eachindex(first(z.is))
-        out[I] = first(itr)
-        itr = iterate(z, last(itr))
+function Base.collect(dz::DiskZip)
+    out = similar(first(dz.is), eltype(dz))
+    i = iterate(dz)
+    for I in eachindex(first(dz.is))
+        out[I] = first(i)
+        i = iterate(dz, last(i))
     end
     return out
 end

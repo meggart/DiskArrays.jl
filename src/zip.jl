@@ -43,8 +43,7 @@ DiskZip(As...) = throw(ArgumentError("zip on disk arrays only works with other s
 
 # Collect zipped disk arrays in the right order
 function Base.collect(z::DiskZip)
-    shp = Base._similar_shape(z, Iterators.IteratorSize(z))
-    out = Base._similar_for(1:1, eltype(z), z, Iterators.IteratorSize(z), shp)
+    out = similar(first(z.is), eltype(z))
     itr = iterate(z)
     for I in eachindex(first(z.is))
         out[I] = first(itr)

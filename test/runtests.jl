@@ -366,6 +366,7 @@ end
     za3 = zip(a, a, a)
     @test collect(zd3_a) == collect(zd3_b) == collect(zd3_c) == collect(za3)
     @test all(zd3_a .== zd3_b .== zd3_c .== za3)
+    @test_throws DimensionMismatch zip(da, rand(2, 3, 1))
 end
 
 @testset "cat" begin

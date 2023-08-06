@@ -346,6 +346,28 @@ end
     test_broadcast(a_disk1)
 end
 
+@testset "zip" begin
+    da = _DiskArray(rand(10, 9, 2); chunksize=(5, 3, 2))
+    a = collect(da)
+    zd = zip(da, da)
+    za = zip(a, a)
+    @test collect(zd) == collect(za)
+    @test all(zd .== za)
+    a = collect(da)
+    @test zip(a, da, a) isa DiskArrays.DiskZip
+    @test zip(da, da, a) isa DiskArrays.DiskZip
+    @test zip(da, da, da) isa DiskArrays.DiskZip
+    @test zip(a, da, da) isa DiskArrays.DiskZip
+    # Should we add moree dispatch to fix this?
+    @test_broken zip(a, a, da) isa DiskArrays.DiskZip
+    zd3_a = zip(a, da, a)
+    zd3_b = zip(da, da, a)
+    zd3_c = zip(da, a, a)
+    za3 = zip(a, a, a)
+    @test collect(zd3_a) == collect(zd3_b) == collect(zd3_c) == collect(za3)
+    @test all(zd3_a .== zd3_b .== zd3_c .== za3)
+end
+
 @testset "cat" begin
     da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
     a = view(da, :, 1:3, :) 

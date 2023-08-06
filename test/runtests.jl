@@ -456,6 +456,12 @@ end
     @test setindex_count(b) == 4
 end
 
+@testset "generator" begin
+    a = collect(reshape(1:90, 10, 9))
+    a_disk = _DiskArray(a; chunksize=(5, 3))
+    @test [aa for aa in a_disk] == a
+end
+
 @testset "Array methods" begin
     a = collect(reshape(1:90, 10, 9))
     a_disk = _DiskArray(a; chunksize=(5, 3))
@@ -463,7 +469,6 @@ end
     @test ei isa DiskArrays.BlockedIndices
     @test length(ei) == 90
     @test eltype(ei) == CartesianIndex{2}
-    @test_broken [aa for aa in a_disk] == a
     @test collect(a_disk) == a
     @test Array(a_disk) == a
     @testset "copyto" begin

@@ -63,12 +63,9 @@ function create_indexvector(a, i)
     end
 end
 
-function batchgetindex(a, i::AbstractVector{Int})
-    ci = CartesianIndices(size(a))
-    return batchgetindex(a, ci[i])
-end
 function batchgetindex(a, i...)
-    indvec = create_indexvector(a, i)
+    I = view(CartesianIndices(size(a)), i...)
+    indvec = create_indexvector(a, (I,))
     return disk_getindex_batch(a, indvec)
 end
 

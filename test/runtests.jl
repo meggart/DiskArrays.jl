@@ -346,6 +346,16 @@ end
     test_broadcast(a_disk1)
 end
 
+@testset "CartesianIndices in vectors" begin
+    a = rand(10, 12, 15)
+    da = _DiskArray(a; chunksize=(5, 10, 2))
+    r = [1 4 6 1]
+    c = [7 8 9 3]
+    cartind = CartesianIndex.(r, c)
+    @test a[cartind, :] == da[cartind, :]
+    @test a[:, cartind] == da[:, cartind]
+end
+
 @testset "cat" begin
     da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
     a = view(da, :, 1:3, :) 

@@ -19,6 +19,7 @@ include("permute.jl")
 include("reshape.jl")
 include("subarray.jl")
 include("cat.jl")
+include("generator.jl")
 
 # The all-in-one macro
 
@@ -36,6 +37,7 @@ macro implement_diskarray(t)
         @implement_subarray $t
         @implement_batchgetindex $t
         @implement_cat $t
+        @implement_generator $t
     end
 end
 

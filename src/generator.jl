@@ -23,15 +23,16 @@ Base.IteratorEltype(::Type{DiskGenerator{I,F}}) where {I,F} =
 # Collect zipped disk arrays in the right order
 # Copied from `collect(::Generator) in julia 1.9
 function Base.collect(itr::DiskGenerator{<:AbstractArray{<:Any,N}}) where N
-    et = Base.@default_eltype(itr)
+    
     y = iterate(itr)
     shp = axes(itr.iter)
     if y === nothing
+        et = Base.@default_eltype(itr)
         return similar(Array{et,N}, shp)
     end
     v1, st = y
     dest = similar(Array{typeof(v1),N}, shp)
-    i = iterate(itr)
+    i = y
     for I in eachindex(itr.iter)
         dest[I] = first(i)
         i = iterate(itr, last(i))

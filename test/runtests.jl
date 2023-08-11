@@ -464,6 +464,15 @@ end
     @test getindex_count(a_disk) == 6
     # Filtered generators dont work yet
     @test_broken [aa for aa in a_disk if aa > 40] == [aa for aa in a if aa > 40] 
+    #Iterator interface tests
+    g = Base.Generator(identity,a_disk)
+    @test g isa DiskArrays.DiskGenerator
+    @test size(g) == (10,9)
+    @test !isempty(g)
+    @test length(g) == 90
+    @test ndims(g) == 2
+    @test keys(g) == CartesianIndices((10,9))
+
 end
 
 @testset "Array methods" begin

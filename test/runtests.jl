@@ -350,7 +350,7 @@ end
     a = rand(10, 9, 2)
     b = rand(10, 9, 2)
     da = _DiskArray(a; chunksize=(5, 3, 2));
-    db = _DiskArray(b; chunksize=(5, 3, 2));
+    db = _DiskArray(b; chunksize=(2, 3, 1));
     z = zip(a, b)
     zd = zip(da, db)
     zdc = collect(zd) 

@@ -347,13 +347,18 @@ end
 end
 
 @testset "zip" begin
-    da = _DiskArray(rand(10, 9, 2); chunksize=(5, 3, 2))
-    a = collect(da)
-    zd = zip(da, da)
-    za = zip(a, a)
-    @test collect(zd) == collect(za)
-    @test all(zd .== za)
-    a = collect(da)
+    a = rand(10, 9, 2)
+    b = rand(10, 9, 2)
+    da = _DiskArray(a; chunksize=(5, 3, 2));
+    db = _DiskArray(b; chunksize=(5, 3, 2));
+    z = zip(a, b)
+    zd = zip(da, db)
+    zdc = collect(zd) 
+    zc = collect(z)
+    @test da.getindex_count[] == 6
+    @test db.getindex_count[] == 6
+    @test all(zd .== z)
+    @test all(zdc .== zc)
     @test zip(a, da, a) isa DiskArrays.DiskZip
     @test zip(da, da, a) isa DiskArrays.DiskZip
     @test zip(da, da, da) isa DiskArrays.DiskZip

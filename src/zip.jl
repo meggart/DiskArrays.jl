@@ -65,7 +65,7 @@ Base.zip(x::AbstractDiskArray, ::AbstractDiskArray, xs...) = _zip_error()
 macro implement_zip(t)
     t = esc(t)
     quote
-        Base.zip(A1::$t, A2::$t, As::AbstractArray...) = $DiskZip(A1, A1, As...)
+        Base.zip(A1::$t, A2::$t, As::AbstractArray...) = $DiskZip(A1, A2, As...)
         Base.zip(A1::$t, A2::AbstractArray, As::AbstractArray...) = $DiskZip(A1, A2, As...)
         Base.zip(A1::AbstractArray, A2::$t, As::AbstractArray...) = $DiskZip(A1, A2, As...)
 

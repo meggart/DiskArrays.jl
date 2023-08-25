@@ -18,12 +18,16 @@ include("mapreduce.jl")
 include("permute.jl")
 include("reshape.jl")
 include("subarray.jl")
+include("rechunk.jl")
 include("cat.jl")
 include("generator.jl")
+include("zip.jl")
+
 
 # The all-in-one macro
 
 macro implement_diskarray(t)
+    # Need to do this for dispatch ambiguity
     t = esc(t)
     quote
         @implement_getindex $t
@@ -37,10 +41,23 @@ macro implement_diskarray(t)
         @implement_subarray $t
         @implement_batchgetindex $t
         @implement_cat $t
+        @implement_zip $t
         @implement_generator $t
     end
 end
 
-@implement_diskarray AbstractDiskArray
+# We need to skip the `implement_zip` macro for dispatch
+@implement_getindex AbstractDiskArray
+@implement_setindex AbstractDiskArray
+@implement_broadcast AbstractDiskArray
+@implement_iteration AbstractDiskArray
+@implement_mapreduce AbstractDiskArray
+@implement_reshape AbstractDiskArray
+@implement_array_methods AbstractDiskArray
+@implement_permutedims AbstractDiskArray
+@implement_subarray AbstractDiskArray
+@implement_batchgetindex AbstractDiskArray
+@implement_cat AbstractDiskArray
+@implement_generator AbstractDiskArray
 
 end # module

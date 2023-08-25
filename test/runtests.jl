@@ -346,6 +346,34 @@ end
     test_broadcast(a_disk1)
 end
 
+@testset "zip" begin
+    a = rand(10, 9, 2)
+    b = rand(10, 9, 2)
+    da = _DiskArray(a; chunksize=(5, 3, 2));
+    db = _DiskArray(b; chunksize=(2, 3, 1));
+    z = zip(a, b)
+    zd = zip(da, db)
+    zdc = collect(zd) 
+    zc = collect(z)
+    @test da.getindex_count[] == 6
+    @test db.getindex_count[] == 6
+    @test all(zd .== z)
+    @test all(zdc .== zc)
+    @test zip(a, da, a) isa DiskArrays.DiskZip
+    @test zip(da, da, a) isa DiskArrays.DiskZip
+    @test zip(da, da, da) isa DiskArrays.DiskZip
+    @test zip(a, da, da) isa DiskArrays.DiskZip
+    # Should we add moree dispatch to fix this?
+    @test_broken zip(a, a, da) isa DiskArrays.DiskZip
+    zd3_a = zip(a, da, a)
+    zd3_b = zip(da, da, a)
+    zd3_c = zip(da, a, a)
+    za3 = zip(a, a, a)
+    @test collect(zd3_a) == collect(zd3_b) == collect(zd3_c) == collect(za3)
+    @test all(zd3_a .== zd3_b .== zd3_c .== za3)
+    @test_throws DimensionMismatch zip(da, rand(2, 3, 1))
+end
+
 @testset "cat" begin
     da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
     a = view(da, :, 1:3, :) 
@@ -504,12 +532,9 @@ end
     @test median(a_disk) == median(a)
     @test median(a_disk; dims=1) == median(a; dims=1) # Works but very slow
     @test median(a_disk; dims=2) == median(a; dims=2) # Works but very slow
-    @test collect(vcat(a_disk, a_disk)) == vcat(a, a) # Needs collect because `zip` is broken
-    @test collect(hcat(a_disk, a_disk)) == hcat(a, a) # Needs collect because `zip` is broken
-    @test collect(cat(a_disk, a_disk; dims=3)) == cat(a, a; dims=3) # Needs collect because `zip` is broken
-    @test_broken vcat(a_disk, a_disk) == vcat(a, a)
-    @test_broken hcat(a_disk, a_disk) == hcat(a, a)
-    @test_broken cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3)
+    @test vcat(a_disk, a_disk) == vcat(a, a)
+    @test hcat(a_disk, a_disk) == hcat(a, a)
+    @test cat(a_disk, a_disk; dims=3) == cat(a, a; dims=3)
     @test_broken circshift(a_disk, 2) == circshift(a, 2) # This one is super weird. The size changes.
 end
 

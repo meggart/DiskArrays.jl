@@ -20,7 +20,9 @@ include("reshape.jl")
 include("subarray.jl")
 include("rechunk.jl")
 include("cat.jl")
+include("generator.jl")
 include("zip.jl")
+
 
 # The all-in-one macro
 
@@ -40,6 +42,7 @@ macro implement_diskarray(t)
         @implement_batchgetindex $t
         @implement_cat $t
         @implement_zip $t
+        @implement_generator $t
     end
 end
 
@@ -55,5 +58,6 @@ end
 @implement_subarray AbstractDiskArray
 @implement_batchgetindex AbstractDiskArray
 @implement_cat AbstractDiskArray
+@implement_generator AbstractDiskArray
 
 end # module

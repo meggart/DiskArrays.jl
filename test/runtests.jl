@@ -2,6 +2,22 @@ using DiskArrays
 using DiskArrays: ReshapedDiskArray, PermutedDiskArray
 using Test
 using Statistics
+using Aqua
+
+# Run with any code changes
+# using JET
+# JET.report_package(DiskArrays)
+
+if VERSION >= v"1.9.0"
+    # These dont resolve even though the suggested methods exist
+    # Aqua.test_ambiguities([DiskArrays, Base, Core])
+    Aqua.test_unbound_args(DiskArrays)
+    Aqua.test_stale_deps(DiskArrays)
+    Aqua.test_undefined_exports(DiskArrays)
+    Aqua.test_project_extras(DiskArrays)
+    Aqua.test_deps_compat(DiskArrays)
+    Aqua.test_project_toml_formatting(DiskArrays)
+end
 
 @testset "allow_scalar" begin
     DiskArrays.allow_scalar(false)
@@ -519,6 +535,9 @@ end
         copyto!(x, CartesianIndices((1:3, 1:2)), a_disk, CartesianIndices((8:10, 8:9)))
     end
 
+    @test collect(reverse(a_disk)) == reverse(a)
+    @test reverse(view(a_disk, :, 1)) == reverse(a[:, 1])
+    @test reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
     @test collect(reverse(a_disk)) == reverse(a)
     @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)
     @test replace(a_disk, 1 => 2) == replace(a, 1 => 2)

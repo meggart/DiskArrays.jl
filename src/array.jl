@@ -2,36 +2,44 @@
 macro implement_array_methods(t)
     t = esc(t)
     quote
-        Base.Array(a::$t) = DiskArrays._Array(a)
-        Base.copyto!(dest::$t, source::AbstractArray) = DiskArrays._copyto!(dest, source)
-        Base.copyto!(dest::AbstractArray, source::$t) = DiskArrays._copyto!(dest, source)
-        Base.copyto!(dest::$t, source::$t) = DiskArrays._copyto!(dest, source)
+        Base.Array(a::$t) = $_Array(a)
+        Base.copyto!(dest::$t, source::AbstractArray) = $_copyto!(dest, source)
+        Base.copyto!(dest::AbstractArray, source::$t) = $_copyto!(dest, source)
+        Base.copyto!(dest::$t, source::$t) = $_copyto!(dest, source)
         function Base.copyto!(
             dest::$t, Rdest::CartesianIndices, src::AbstractArray, Rsrc::CartesianIndices
         )
-            return DiskArrays._copyto!(dest, Rdest, src, Rsrc)
+            return $_copyto!(dest, Rdest, src, Rsrc)
         end
         function Base.copyto!(
             dest::AbstractArray, Rdest::CartesianIndices, src::$t, Rsrc::CartesianIndices
         )
-            return DiskArrays._copyto!(dest, Rdest, src, Rsrc)
+            return $_copyto!(dest, Rdest, src, Rsrc)
         end
         function Base.copyto!(
             dest::$t, Rdest::CartesianIndices, src::$t, Rsrc::CartesianIndices
         )
-            return DiskArrays._copyto!(dest, Rdest, src, Rsrc)
+            return $_copyto!(dest, Rdest, src, Rsrc)
         end
-        Base.reverse(a::$t, dims=:) = DiskArrays._reverse(a, dims)
+        # For ambiguity
+        copyto!(dest::PermutedDimsArray, src::$t) = DiskArrays._copyto!(dest, src)
+        copyto!(dest::PermutedDimsArray{T,N}, src::$t{T,N}) where {T,N} = 
+            $_copyto!(dest, src)
+
+        Base.reverse(a::$t, dims=:) = $_reverse(a, dims)
+        # For ambiguity
+        Base.reverse(a::$t{<:Any,1}, dims::Integer) = $_reverse(a, dims)
+
         # Here we extend the unexported `_replace` method, but we replicate 
         # much less Base functionality by extending it rather than `replace`.
         function Base._replace!(new::Base.Callable, res::AbstractArray, A::$t, count::Int)
-            return DiskArrays._replace!(new, res, A, count)
+            return $_replace!(new, res, A, count)
         end
         function Base._replace!(new::Base.Callable, res::$t, A::AbstractArray, count::Int)
-            return DiskArrays._replace!(new, res, A, count)
+            return $_replace!(new, res, A, count)
         end
         function Base._replace!(new::Base.Callable, res::$t, A::$t, count::Int)
-            return DiskArrays._replace!(new, res, A, count)
+            return $_replace!(new, res, A, count)
         end
     end
 end

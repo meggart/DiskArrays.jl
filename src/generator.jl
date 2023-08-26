@@ -34,8 +34,12 @@ function Base.collect(itr::DiskGenerator{<:AbstractArray{<:Any,N}}) where N
     dest = similar(Array{typeof(v1),N}, shp)
     i = y
     for I in eachindex(itr.iter)
-        dest[I] = first(i)
-        i = iterate(itr, last(i))
+        if i isa Nothing # Mainly to keep JET clean 
+            error("Should not be reached: iterator is shorter than its `eachindex` iterator")
+        else
+            dest[I] = first(i)
+            i = iterate(itr, last(i))
+        end
     end
     return dest
 end

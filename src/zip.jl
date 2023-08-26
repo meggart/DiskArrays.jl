@@ -17,7 +17,7 @@ Base.IteratorEltype(::Type{DiskZip{Is}}) where {Is<:Tuple} =
 # This forces the iteration order to be the same for
 # all arrays.
 
-function DiskZip(As::AbstractArray{<:Any,N}...) where N
+function DiskZip(As::AbstractArray...) 
     map(As) do A
         size(A) == size(first(As)) || throw(DimensionMismatch("Arrays zipped with disk arrays must be the same size"))
     end

@@ -150,11 +150,15 @@ function subsetchunks_fallback(r, subs)
     # Find first and last chunk where elements are extracted
     i1 = findfirst(!iszero, cs)
     i2 = findlast(!iszero, cs)
-    chunks = cs[i1:i2]
-    if rev
-        reverse!(chunks)
+    if isnothing(i1) || isnothing(i2) 
+        error("Should not be reached. Non-zero indices not found")
+    else
+        chunks = cs[i1:i2]
+        if rev
+            reverse!(chunks)
+        end
+        return chunktype_from_chunksizes(chunks)
     end
-    chunktype_from_chunksizes(chunks)
 end
 
 """

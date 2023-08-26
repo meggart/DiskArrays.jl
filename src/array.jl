@@ -21,30 +21,9 @@ macro implement_array_methods(t)
         )
             return $_copyto!(dest, Rdest, src, Rsrc)
         end
-
         # For ambiguity
-        function copyto!(
-            dest::$t{T,2}, 
-            Rdest::CartesianIndices{2,R} where R<:Tuple{OrdinalRange{Int64, Int64}, OrdinalRange{Int64, Int64}}, 
-            src::SparseArrays.AbstractSparseMatrixCSC{T}, 
-            Rsrc::CartesianIndices{2,R} where R<:Tuple{OrdinalRange{Int64, Int64}, OrdinalRange{Int64, Int64}}
-        ) where T
-            return $_copyto!(dest, Rdest, src, Rsrc)
-        end
         copyto!(dest::PermutedDimsArray, src::$t) = DiskArrays._copyto!(dest, src)
         copyto!(dest::PermutedDimsArray{T,N}, src::$t{T,N}) where {T,N} = 
-            $_copyto!(dest, src)
-        copyto!(dest::$t{T,2}, src::SparseArrays.CHOLMOD.Dense{T}) where T<:Union{Float64,ComplexF64} =
-            $_copyto!(dest, src)
-        copyto!(dest::$t{T}, src::SparseArrays.CHOLMOD.Dense{T}) where T<:Union{Float64,ComplexF64} =
-            $_copyto!(dest, src)
-        copyto!(dest::$t, src::SparseArrays.CHOLMOD.Dense) = 
-            $_copyto!(dest, src)
-        copyto!(dest::$t{<:Any,2}, src::LinearAlgebra.AbstractQ) =
-            $_copyto!(dest, src)
-        copyto!(dest::SparseArrays.AbstractCompressedVector, src::$t{<:Any,1}) =
-            $_copyto!(dest, src)
-        copyto!(dest::$t{<:Any,2}, src::SparseArrays.AbstractSparseMatrixCSC) =
             $_copyto!(dest, src)
 
         Base.reverse(a::$t, dims=:) = $_reverse(a, dims)

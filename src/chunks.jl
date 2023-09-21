@@ -109,8 +109,8 @@ end
 grid_offset(r::IrregularChunks) = 0
 max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
 
-struct GridChunks{N} <: AbstractArray{NTuple{N,UnitRange{Int64}},N}
-    chunks::Tuple{Vararg{ChunkType,N}}
+struct GridChunks{N,C<:Tuple{Vararg{<:ChunkType,N}}} <: AbstractArray{NTuple{N,UnitRange{Int64}},N}
+    chunks::C
 end
 GridChunks(ct::ChunkType...) = GridChunks(ct)
 GridChunks(a, chunksize; offset=(_ -> 0).(size(a))) = GridChunks(size(a), chunksize; offset)

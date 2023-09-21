@@ -34,7 +34,8 @@ is_batch_arg(::AbstractRange) = false
 function getindex_disk(a, i...)
     checkscalar(i)
     if any(is_batch_arg, i)
-        batchgetindex(a, i...) else
+        batchgetindex(a, i...) 
+    else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)
         readblock!(a, data, inds...)

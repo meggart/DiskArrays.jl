@@ -40,7 +40,7 @@ end
 _DiskArray(a; chunksize=size(a)) = _DiskArray(Ref(0), Ref(0), a, chunksize)
 
 # Apply the all in one macro rather than inheriting
-DiskArrays.@implement_diskarray _DiskArray
+DiskArrays.@implement_diskarray Main._DiskArray
 
 Base.size(a::_DiskArray) = size(a.parent)
 DiskArrays.haschunks(::_DiskArray) = DiskArrays.Chunked()

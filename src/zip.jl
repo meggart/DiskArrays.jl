@@ -74,6 +74,6 @@ macro implement_zip(t)
 
         Base.zip(::$t, x, xs...) = $_zip_error()
         Base.zip(x, ::$t, xs...) = $_zip_error()
-        Base.zip($t, ::$t, xs...) = $_zip_error()
+        Base.zip(::$t, ::$t, xs...) = $_zip_error()
     end
 end

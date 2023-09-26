@@ -72,16 +72,16 @@ _ttgi(o, t, i1, irest...) = _ttgi((o..., t[i1]), t, irest...)
 _ttgi(o, t, i1) = (o..., t[i1])
 
 # Implementaion macro
-
 macro implement_reshape(t)
     t = esc(t)
     quote
         function Base._reshape(A::$t, dims::NTuple{N,Int}) where {N}
             return reshape_disk(A, dims)
         end
-        # For ambiguity
-        function Base._reshape(A::DiskArrays.AbstractDiskArray{<:Any,1}, dims::Tuple{Int64})
-            reshape_disk(A, dims)
-        end
     end
+end
+
+# For ambiguity
+function Base._reshape(A::DiskArrays.AbstractDiskArray{<:Any,1}, dims::Tuple{Int64})
+    reshape_disk(A, dims)
 end

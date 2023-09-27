@@ -11,7 +11,7 @@ struct ConcatDiskArray{T,N,P} <: AbstractDiskArray{T,N}
 end
 function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{T,N},M}) where {T,N,M}
     function othersize(x, id)
-        (x[1:id-1]..., x[id+1:end]...)
+        return (x[1:(id - 1)]..., x[(id + 1):end]...)
     end
     if N > M
         newshape = (size(arrays)..., ntuple(_ -> 1, N - M)...)
@@ -55,9 +55,11 @@ function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{T,N},M}) where {T
 end
 function ConcatDiskArray(arrays::AbstractArray)
     # Validate array eltype and dimensionality
-    all(a -> eltype(a) == eltype(first(arrays)), arrays) || error("Arrays don't have the same element type")
-    all(a -> ndims(a) == ndims(first(arrays)), arrays) || error("Arrays don't have the same dimensions")
-    error("Should not be reached")
+    all(a -> eltype(a) == eltype(first(arrays)), arrays) ||
+        error("Arrays don't have the same element type")
+    all(a -> ndims(a) == ndims(first(arrays)), arrays) ||
+        error("Arrays don't have the same dimensions")
+    return error("Should not be reached")
 end
 
 Base.size(a::ConcatDiskArray) = a.size
@@ -89,7 +91,7 @@ function _concat_diskarray_block_io(f, a::ConcatDiskArray, inds...)
             max(first(indstoread) - si[ii] + 1, 1):min(last(indstoread) - si[ii] + 1, ms)
         end
         outer_range = map(cI.I, a.startinds, array_range, inds) do ii, si, ar, indstoread
-            (first(ar)+si[ii]-first(indstoread)):(last(ar)+si[ii]-first(indstoread))
+            (first(ar) + si[ii] - first(indstoread)):(last(ar) + si[ii] - first(indstoread))
         end
         # aout[outer_range...] = a.parents[cI][array_range...]
         f(outer_range, array_range, cI)
@@ -105,7 +107,7 @@ function eachchunk(aconc::ConcatDiskArray{T,N}) where {T,N}
         sliceinds = Base.setindex(ntuple(_ -> 1, N), :, i)
         v = map(c -> c.chunks[i], oldchunks[sliceinds...])
         init = RegularChunks(approx_chunksize(first(v)), 0, 0)
-        reduce(mergechunks, v; init = init)
+        reduce(mergechunks, v; init=init)
     end
 
     return GridChunks(newchunks...)
@@ -121,7 +123,7 @@ end
 
 mergechunks(a::ChunkType, b::ChunkType) = mergechunks_irregular(a, b)
 function mergechunks_irregular(a, b)
-    IrregularChunks(chunksizes = filter(!iszero, [length.(a); length.(b)]))
+    return IrregularChunks(; chunksizes=filter(!iszero, [length.(a); length.(b)]))
 end
 
 function cat_disk(As::AbstractArray...; dims::Int)
@@ -141,9 +143,21 @@ macro implement_cat(t)
         # TODO this could be better. allowing non-AbstractDiskArray in
         # the macro makes this kind of impossible to avoid dispatch problems
         Base.cat(A1::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, As...; dims)
-        Base.cat(A1::AbstractArray, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
-        Base.cat(A1::$t, A2::$t, As::AbstractArray...; dims::Int) = cat_disk(A1, A2, As...; dims)
-        Base.vcat(A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...) = cat_disk(A1, As...; dims=1)
-        Base.hcat(A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...) = cat_disk(A1, As...; dims=2)
+        function Base.cat(A1::AbstractArray, A2::$t, As::AbstractArray...; dims::Int)
+            return cat_disk(A1, A2, As...; dims)
+        end
+        function Base.cat(A1::$t, A2::$t, As::AbstractArray...; dims::Int)
+            return cat_disk(A1, A2, As...; dims)
+        end
+        function Base.vcat(
+            A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...
+        )
+            return cat_disk(A1, As...; dims=1)
+        end
+        function Base.hcat(
+            A1::Union{$t{<:Any,1},$t{<:Any,2}}, As::Union{$t{<:Any,1},$t{<:Any,2}}...
+        )
+            return cat_disk(A1, As...; dims=2)
+        end
     end
 end

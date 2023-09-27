@@ -37,7 +37,9 @@ function Base.iterate(::BlockedIndices, i)
 end
 
 # Implementaion macros
-@noinline function _iterate_disk(a::AbstractArray{T}, i::I) where {T,I<:Tuple{A,B,C}} where {A,B,C}
+@noinline function _iterate_disk(
+    a::AbstractArray{T}, i::I
+) where {T,I<:Tuple{A,B,C}} where {A,B,C}
     datacur::A, bi::B, bstate::C = i
     (chunkiter, innerinds) = bstate
     cistateold = length(chunkiter)

@@ -39,7 +39,7 @@ function Base.copyto!(dest::AbstractArray, bc::Broadcasted{ChunkStyle{N}}) where
         # Possible optimization would be to use a LRU cache here, so that data has not
         # to be read twice in case of repeating indices
         argssub = map(i -> subsetarg(i, cnow), bcf.args)
-        view(dest,cnow...) .= bcf.f.(argssub...)
+        view(dest, cnow...) .= bcf.f.(argssub...)
     end
     return dest
 end

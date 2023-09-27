@@ -25,16 +25,15 @@ function writeblock!() end
 # This is for filtering "true" batch getindex functions with vector indexing from
 # excess singleton dimensions with values like [1] and 1:1
 function is_batch_arg(j::AbstractArray)
-    length(j) != 1
+    return length(j) != 1
 end
 is_batch_arg(_) = false
 is_batch_arg(::AbstractRange) = false
 
-
 function getindex_disk(a, i...)
     checkscalar(i)
     if any(is_batch_arg, i)
-        batchgetindex(a, i...) 
+        batchgetindex(a, i...)
     else
         inds, trans = interpret_indices_disk(a, i)
         data = Array{eltype(a)}(undef, map(length, inds)...)
@@ -59,7 +58,6 @@ function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
         v
     end
 end
-
 
 """
 Function that translates a list of user-supplied indices into plain ranges and
@@ -100,17 +98,17 @@ function interpret_indices_disk(
     elseif ndims(A) < N
         n_add_dim = sum((ndims(A) + 1):N) do i
             first(r[i]) == 1 || throw(BoundsError(A, r))
-            isa(r[i],AbstractArray)
+            isa(r[i], AbstractArray)
         end
         _, rshort = commonlength(size(A), r)
         inds, resh1 = interpret_indices_disk(A, rshort)
         if n_add_dim > 0
-            ladddim = ntuple(_->1,n_add_dim)
-            oldsize = result_size(inds,resh1)
-            resh2 = transformstack(resh1,Reshaper((oldsize...,ladddim...)))
-            inds,resh2
+            ladddim = ntuple(_ -> 1, n_add_dim)
+            oldsize = result_size(inds, resh1)
+            resh2 = transformstack(resh1, Reshaper((oldsize..., ladddim...)))
+            inds, resh2
         else
-            inds,resh1
+            inds, resh1
         end
     else
         size(A, N + 1) == 1 || throw(BoundsError(A, r))
@@ -146,18 +144,20 @@ struct Reshaper{I}
     reshape_indices::I
 end
 (r::Reshaper)(a) = reshape(a, r.reshape_indices)
-result_size(_,r::Reshaper) = r.reshape_indices
+result_size(_, r::Reshaper) = r.reshape_indices
 struct DimsDropper{D}
     d::D
 end
 (d::DimsDropper)(a) = length(d.d) == ndims(a) ? a[1] : dropdims(a; dims=d.d)
-result_size(inds,d::DimsDropper) = getindex.(Ref(inds),filter(!in(d.d),ntuple(identity,length(inds))))
+function result_size(inds, d::DimsDropper)
+    return getindex.(Ref(inds), filter(!in(d.d), ntuple(identity, length(inds))))
+end
 
 struct TransformStack{S}
     s::S
 end
-transformstack(_::Union{Reshaper,DimsDropper,typeof(identity)},s2::Reshaper) = s2
-transformstack(s...) = TransformStack(filter(!=(identity),s))
+transformstack(_::Union{Reshaper,DimsDropper,typeof(identity)}, s2::Reshaper) = s2
+transformstack(s...) = TransformStack(filter(!=(identity), s))
 (s::TransformStack)(a) = ∘(s.s...)(a)
 
 # function getbb(ar::AbstractArray{Bool})

@@ -8,18 +8,21 @@ Base.first(dz::DiskZip) = Base.first(Iterators.Zip(dz.is))
 Base.last(dz::DiskZip) = Base.last(Iterators.Zip(dz.is))
 Base.length(dz::DiskZip) = Base.length(Iterators.Zip(dz.is))
 Base.size(dz::DiskZip) = Base.size(Iterators.Zip(dz.is))
-Base.IteratorSize(::Type{DiskZip{Is}}) where {Is<:Tuple} =
-    Base.IteratorSize(Iterators.Zip{Is})
-Base.IteratorEltype(::Type{DiskZip{Is}}) where {Is<:Tuple} =
-    Base.IteratorEltype(Iterators.Zip{Is})
+function Base.IteratorSize(::Type{DiskZip{Is}}) where {Is<:Tuple}
+    return Base.IteratorSize(Iterators.Zip{Is})
+end
+function Base.IteratorEltype(::Type{DiskZip{Is}}) where {Is<:Tuple}
+    return Base.IteratorEltype(Iterators.Zip{Is})
+end
 
 # Rechunk using the chunks of the first Chunked array
 # This forces the iteration order to be the same for
 # all arrays.
 
-function DiskZip(As::AbstractArray...) 
+function DiskZip(As::AbstractArray...)
     map(As) do A
-        size(A) == size(first(As)) || throw(DimensionMismatch("Arrays zipped with disk arrays must be the same size"))
+        size(A) == size(first(As)) ||
+            throw(DimensionMismatch("Arrays zipped with disk arrays must be the same size"))
     end
     # Get the chunkes of the first Chunked array
     chunks = reduce(As; init=nothing) do acc, A
@@ -39,7 +42,11 @@ function DiskZip(As::AbstractArray...)
     end
 end
 # For now we only allow zip on exact same-sized arrays
-DiskZip(As...) = throw(ArgumentError("zip on disk arrays only works with other same-sized AbstractArray"))
+function DiskZip(As...)
+    throw(
+        ArgumentError("zip on disk arrays only works with other same-sized AbstractArray")
+    )
+end
 
 # Collect zipped disk arrays in the right order
 function Base.collect(dz::DiskZip)
@@ -54,9 +61,15 @@ end
 
 _zip_error() = throw(ArgumentError("Cannot `zip` a disk array with an iterator"))
 
-Base.zip(A1::AbstractDiskArray, A2::AbstractDiskArray, As::AbstractArray...) = DiskZip(A1, A2, As...)
-Base.zip(A1::AbstractDiskArray, A2::AbstractArray, As::AbstractArray...) = DiskZip(A1, A1, As...)
-Base.zip(A1::AbstractArray, A2::AbstractDiskArray, As::AbstractArray...) = DiskZip(A1, A2, As...)
+function Base.zip(A1::AbstractDiskArray, A2::AbstractDiskArray, As::AbstractArray...)
+    return DiskZip(A1, A2, As...)
+end
+function Base.zip(A1::AbstractDiskArray, A2::AbstractArray, As::AbstractArray...)
+    return DiskZip(A1, A1, As...)
+end
+function Base.zip(A1::AbstractArray, A2::AbstractDiskArray, As::AbstractArray...)
+    return DiskZip(A1, A2, As...)
+end
 
 Base.zip(::AbstractDiskArray, x, xs...) = _zip_error()
 Base.zip(x, ::AbstractDiskArray, xs...) = _zip_error()
@@ -69,8 +82,12 @@ macro implement_zip(t)
         Base.zip(A1::$t, A2::AbstractArray, As::AbstractArray...) = $DiskZip(A1, A2, As...)
         Base.zip(A1::AbstractArray, A2::$t, As::AbstractArray...) = $DiskZip(A1, A2, As...)
 
-        Base.zip(A1::AbstractDiskArray, A2::$t, As::AbstractArray...) = $DiskZip(A1, A2, As...)
-        Base.zip(A1::$t, A2::AbstractDiskArray, As::AbstractArray...) = $DiskZip(A1, A2, As...)
+        function Base.zip(A1::AbstractDiskArray, A2::$t, As::AbstractArray...)
+            return $DiskZip(A1, A2, As...)
+        end
+        function Base.zip(A1::$t, A2::AbstractDiskArray, As::AbstractArray...)
+            return $DiskZip(A1, A2, As...)
+        end
 
         Base.zip(::$t, x, xs...) = $_zip_error()
         Base.zip(x, ::$t, xs...) = $_zip_error()

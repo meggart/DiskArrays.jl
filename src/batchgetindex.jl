@@ -76,10 +76,10 @@ function prepare_disk_getindex_batch(ar, indstoread)
     i1 = first(indstoread)
     inserts = getrangeinsert(i1)
     inds = collect(Any, 1:ndims(indstoread))
-    offsets = zeros(Int,ndims(indstoread))
+    offsets = zeros(Int, ndims(indstoread))
     for i in inserts
         insert!(inds, last(i), Colon_From{first(i)}())
-        insert!(offsets,last(i),first(i1[first(i)])-1)
+        insert!(offsets, last(i), first(i1[first(i)]) - 1)
     end
     outindexer = ReIndexer(Val((inds...,)))
     it = eltype(indstoread)
@@ -118,7 +118,7 @@ end
 
 function disk_getindex_batch(ar, indstoread)
     prep = prepare_disk_getindex_batch(ar, indstoread)
-    outar = OffsetArray(Array{eltype(ar)}(undef, prep.outsize...),prep.offsets...)
+    outar = OffsetArray(Array{eltype(ar)}(undef, prep.outsize...), prep.offsets...)
     return disk_getindex_batch!(outar, ar, indstoread; prep=prep)
 end
 
@@ -206,11 +206,11 @@ macro implement_batchgetindex(t)
     quote
         # Define fallbacks for reading and writing sparse data
         function DiskArrays.readblock!(A::$t, A_ret, r::AbstractVector...)
-            _readblock!(A, A_ret, r...)
+            return _readblock!(A, A_ret, r...)
         end
 
         function DiskArrays.writeblock!(A::$t, A_ret, r::AbstractVector...)
-            _writeblock!(A, A_ret, r...)
+            return _writeblock!(A, A_ret, r...)
         end
     end
 end

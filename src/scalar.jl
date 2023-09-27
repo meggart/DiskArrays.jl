@@ -19,11 +19,15 @@ Returns a `Bool`.
 """
 can_scalar() = ALLOW_SCALAR[]
 
-_scalar_error() = error("Scalar indexing with `Int` is very slow, and currently is disallowed. Run DiskArrays.allow_scalar(true) to allow")
+function _scalar_error()
+    return error(
+        "Scalar indexing with `Int` is very slow, and currently is disallowed. Run DiskArrays.allow_scalar(true) to allow",
+    )
+end
 
 # Checks if an index is scalar at all, and then if scalar indexing is allowed. 
 # Syntax as for `checkbounds`.
-checkscalar(::Type{Bool}, I::Tuple) = checkscalar(Bool, I...) 
+checkscalar(::Type{Bool}, I::Tuple) = checkscalar(Bool, I...)
 checkscalar(::Type{Bool}, I...) = !all(map(i -> i isa Int, I)) || can_scalar()
-checkscalar(I::Tuple) = checkscalar(I...) 
+checkscalar(I::Tuple) = checkscalar(I...)
 checkscalar(I...) = checkscalar(Bool, I...) || _scalar_error()

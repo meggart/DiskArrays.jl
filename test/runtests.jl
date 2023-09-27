@@ -94,9 +94,9 @@ function test_getindex(a)
     @test a[2:2:4, 1:2:5] == [2 10 18; 4 12 20]
     @test a[end:-1:1, 1, 1] == [4, 3, 2, 1]
     @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
-    @test a[2,3,1,1:1] == [10]
-    @test a[2,3,1,[1],[1]] == fill(10,1,1)
-    @test a[:,3,1,[1]] == reshape(9:12,4,1)
+    @test a[2, 3, 1, 1:1] == [10]
+    @test a[2, 3, 1, [1], [1]] == fill(10, 1, 1)
+    @test a[:, 3, 1, [1]] == reshape(9:12, 4, 1)
     # Test bitmask indexing
     m = falses(4, 5, 1)
     m[2, :, 1] .= true
@@ -365,11 +365,11 @@ end
 @testset "zip" begin
     a = rand(10, 9, 2)
     b = rand(10, 9, 2)
-    da = _DiskArray(a; chunksize=(5, 3, 2));
-    db = _DiskArray(b; chunksize=(2, 3, 1));
+    da = _DiskArray(a; chunksize=(5, 3, 2))
+    db = _DiskArray(b; chunksize=(2, 3, 1))
     z = zip(a, b)
     zd = zip(da, db)
-    zdc = collect(zd) 
+    zdc = collect(zd)
     zc = collect(z)
     @test da.getindex_count[] == 6
     @test db.getindex_count[] == 6
@@ -392,8 +392,8 @@ end
 
 @testset "cat" begin
     da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
-    a = view(da, :, 1:3, :) 
-    b = view(da, :, 4:6, :) 
+    a = view(da, :, 1:3, :)
+    b = view(da, :, 4:6, :)
     ca = cat(a, b; dims=2)
     @test ca == da
     @test ca .* 2 == da .* 2
@@ -413,7 +413,7 @@ end
         @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
     end
 
-   @testset "write concat" begin
+    @testset "write concat" begin
         ca .= reshape(0:23, 4, 6)
         @test sum(ca) == sum(0:23)
     end
@@ -425,16 +425,16 @@ end
         d = cat(a, b, c; dims=1)
         @test d == [1:10; 1:9; 1:7]
         @test DiskArrays.eachchunk(d) == [
-             (1:3,)
-             (4:6,)
-             (7:9,)
-             (10:10,)
-             (11:14,)
-             (15:18,)
-             (19:19,)
-             (20:22,)
-             (23:25,)
-             (26:26,)
+            (1:3,)
+            (4:6,)
+            (7:9,)
+            (10:10,)
+            (11:14,)
+            (15:18,)
+            (19:19,)
+            (20:22,)
+            (23:25,)
+            (26:26,)
         ]
         d .= 1:26
         @test d == 1:26
@@ -462,7 +462,6 @@ end
     @test a[coords] == trueparent(a)[coords]
     @test getindex_count(a) == 4
 
-
     aperm = permutedims(a, (2, 1, 3))
     coordsperm = (x -> CartesianIndex(x.I[[2, 1, 3]])).(coords)
     @test aperm[coordsperm] == a[coords]
@@ -471,7 +470,7 @@ end
     @test a[coords, :] == trueparent(a)[coords, :]
     @test getindex_count(a) == 10
 
-    @test a[3:4,[1,4],1] == trueparent(a)[3:4, [1, 4], 1]
+    @test a[3:4, [1, 4], 1] == trueparent(a)[3:4, [1, 4], 1]
     @test getindex_count(a) == 12
 
     aperm = permutedims(a, (2, 1, 3))
@@ -507,16 +506,15 @@ end
     #The array has 6 chunks so getindex_count should be 6
     @test getindex_count(a_disk) == 6
     # Filtered generators dont work yet
-    @test_broken [aa for aa in a_disk if aa > 40] == [aa for aa in a if aa > 40] 
+    @test_broken [aa for aa in a_disk if aa > 40] == [aa for aa in a if aa > 40]
     #Iterator interface tests
-    g = Base.Generator(identity,a_disk)
+    g = Base.Generator(identity, a_disk)
     @test g isa DiskArrays.DiskGenerator
-    @test size(g) == (10,9)
+    @test size(g) == (10, 9)
     @test !isempty(g)
     @test length(g) == 90
     @test ndims(g) == 2
-    @test keys(g) == CartesianIndices((10,9))
-
+    @test keys(g) == CartesianIndices((10, 9))
 end
 
 @testset "Array methods" begin
@@ -666,4 +664,3 @@ struct TestArray{T,N} <: AbstractArray{T,N} end
     DiskArrays.@implement_batchgetindex TestArray
     DiskArrays.@implement_diskarray TestArray
 end
-

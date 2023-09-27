@@ -83,5 +83,5 @@ end
 
 # For ambiguity
 function Base._reshape(A::DiskArrays.AbstractDiskArray{<:Any,1}, dims::Tuple{Int64})
-    reshape_disk(A, dims)
+    return reshape_disk(A, dims)
 end

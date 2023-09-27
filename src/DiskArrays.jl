@@ -23,7 +23,6 @@ include("cat.jl")
 include("generator.jl")
 include("zip.jl")
 
-
 # The all-in-one macro
 
 macro implement_diskarray(t)

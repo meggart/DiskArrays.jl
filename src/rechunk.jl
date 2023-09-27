@@ -11,7 +11,9 @@ Base.parent(A::RechunkedDiskArray) = A.parent
 Base.size(A::RechunkedDiskArray) = size(parent(A))
 # These could be more efficient with memory in some cases, but this is simple
 readblock!(A::RechunkedDiskArray, data, I...) = _readblock_rechunked(A, data, I...)
-readblock!(A::RechunkedDiskArray, data, I::AbstractVector...) = _readblock_rechunked(A, data, I...)
+function readblock!(A::RechunkedDiskArray, data, I::AbstractVector...)
+    return _readblock_rechunked(A, data, I...)
+end
 writeblock!(A::RechunkedDiskArray, data, I...) = writeblock!(parent(A), data, I...)
 
 haschunks(::RechunkedDiskArray) = Chunked()

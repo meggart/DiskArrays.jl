@@ -23,8 +23,9 @@ macro implement_array_methods(t)
         end
         # For ambiguity
         copyto!(dest::PermutedDimsArray, src::$t) = DiskArrays._copyto!(dest, src)
-        copyto!(dest::PermutedDimsArray{T,N}, src::$t{T,N}) where {T,N} = 
-            $_copyto!(dest, src)
+        function copyto!(dest::PermutedDimsArray{T,N}, src::$t{T,N}) where {T,N}
+            return $_copyto!(dest, src)
+        end
 
         Base.reverse(a::$t, dims=:) = $_reverse(a, dims)
         # For ambiguity

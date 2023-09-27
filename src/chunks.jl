@@ -7,7 +7,9 @@ function eachchunk end
 
 abstract type ChunkType <: AbstractVector{UnitRange} end
 
-findchunk(a::ChunkType, i::AbstractUnitRange) = findchunk(a, first(i))::Int:findchunk(a, last(i))::Int
+function findchunk(a::ChunkType, i::AbstractUnitRange)
+    return (findchunk(a, first(i))::Int):(findchunk(a, last(i))::Int)
+end
 findchunk(a::ChunkType, ::Colon) = 1:length(a)
 
 """
@@ -109,7 +111,8 @@ end
 grid_offset(r::IrregularChunks) = 0
 max_chunksize(r::IrregularChunks) = maximum(diff(r.offsets))
 
-struct GridChunks{N,C<:Tuple{Vararg{ChunkType,N}}} <: AbstractArray{NTuple{N,UnitRange{Int64}},N}
+struct GridChunks{N,C<:Tuple{Vararg{ChunkType,N}}} <:
+       AbstractArray{NTuple{N,UnitRange{Int64}},N}
     chunks::C
 end
 GridChunks(ct::ChunkType...) = GridChunks(ct)
@@ -150,7 +153,7 @@ function subsetchunks_fallback(r, subs)
     # Find first and last chunk where elements are extracted
     i1 = findfirst(!iszero, cs)
     i2 = findlast(!iszero, cs)
-    if isnothing(i1) || isnothing(i2) 
+    if isnothing(i1) || isnothing(i2)
         error("Should not be reached. Non-zero indices not found")
     else
         chunks = cs[i1:i2]
@@ -176,7 +179,7 @@ function chunktype_from_chunksizes(chunks)
         #Two affected chunks
         chunksize = max(chunks[1], chunks[2])
         return RegularChunks(chunksize, chunksize - chunks[1], sum(chunks))
-    elseif all(==(chunks[2]), view(chunks, (2):(length(chunks)-1))) &&
+    elseif all(==(chunks[2]), view(chunks, (2):(length(chunks) - 1))) &&
         chunks[end] <= chunks[2] &&
         chunks[1] <= chunks[2]
         #All chunks have the same size, only first and last chunk can be shorter

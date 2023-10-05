@@ -116,6 +116,13 @@ function interpret_indices_disk(
     end
 end
 
+
+function interpret_indices_disk(A::AbstractVector, r::NTuple{1,AbstractVector})
+    inds = map(_convert_index, r, size(A))
+    resh = DimsDropper(findints(r))
+    return inds, resh
+end
+
 # function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
 #   ba = r[1]
 #   if ndims(A)==ndims(ba)

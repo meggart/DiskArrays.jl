@@ -246,6 +246,7 @@ end
     @test size(a2) == (10,)
     @test_throws BoundsError a2[0]
     @test_throws BoundsError a2[11]
+    @test_throws ArgumentError RegularChunks(0,2,10)
     b1 = IrregularChunks(; chunksizes=[3, 3, 4, 3, 3])
     @test b1[1] == 1:3
     @test b1[2] == 4:6
@@ -267,6 +268,8 @@ end
     @test DiskArrays.approx_chunksize(gridc) == (5, 2, 3)
     @test DiskArrays.grid_offset(gridc) == (2, 0, 0)
     @test DiskArrays.max_chunksize(gridc) == (5, 2, 4)
+    @test_throws ArgumentError IrregularChunks([1,2,3])
+    @test_throws ArgumentError IrregularChunks([0,5,4])
 end
 
 @testset "SubsetChunks" begin

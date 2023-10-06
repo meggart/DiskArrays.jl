@@ -247,6 +247,9 @@ end
     @test_throws BoundsError a2[0]
     @test_throws BoundsError a2[11]
     @test_throws ArgumentError RegularChunks(0,2,10)
+    @test_throws ArgumentError RegularChunks(2,-1,10)
+    @test_throws ArgumentError RegularChunks(2,2,10)
+    @test_throws ArgumentError RegularChunks(5,2,-1)
     b1 = IrregularChunks(; chunksizes=[3, 3, 4, 3, 3])
     @test b1[1] == 1:3
     @test b1[2] == 4:6

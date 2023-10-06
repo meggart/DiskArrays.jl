@@ -664,3 +664,36 @@ struct TestArray{T,N} <: AbstractArray{T,N} end
     DiskArrays.@implement_batchgetindex TestArray
     DiskArrays.@implement_diskarray TestArray
 end
+
+# issue #123
+
+mutable struct ResizableArray{T,N} <: AbstractArray{T,N}
+    A::AbstractArray{T,N}
+end
+
+Base.size(RA::ResizableArray) = size(RA.A)
+Base.getindex(RA::ResizableArray,inds...) = getindex(RA.A,inds...)
+Base.checkbounds(::Type{Bool},RA::ResizableArray,inds...) = all(minimum.(inds) .> 0)
+function Base.setindex!(RA::ResizableArray{T,N}, value, inds::Vararg{Int, N}) where {T,N}
+    sz = max.(size(RA),inds)
+    if sz != size(RA)
+        # grow
+        oldA = RA.A
+        RA.A = Array{T,N}(undef,sz)
+        RA.A[axes(oldA)...] = oldA
+    end
+    RA.A[inds...] = value
+end
+
+b = ResizableArray(Vector{Int}(undef,0))
+@test size(b) == (0,)
+b[1:5] = 1:5
+@test b == 1:5
+@test size(b) == (5,)
+
+a = ResizableArray(Vector{Int}(undef,0))
+a1 = _DiskArray(a,chunksize=(5,))
+@test size(a1) == (0,)
+a1[1:5] .= 1:5
+@test a1 == 1:5
+@test size(a1) == (5,)

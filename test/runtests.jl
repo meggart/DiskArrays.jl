@@ -685,15 +685,18 @@ function Base.setindex!(RA::ResizableArray{T,N}, value, inds::Vararg{Int, N}) wh
     RA.A[inds...] = value
 end
 
-b = ResizableArray(Vector{Int}(undef,0))
-@test size(b) == (0,)
-b[1:5] = 1:5
-@test b == 1:5
-@test size(b) == (5,)
+@testset "Resizable arrays" begin
+    b = ResizableArray(Vector{Int}(undef,0))
+    @test size(b) == (0,)
+    b[1:5] = 1:5
+    @test b == 1:5
+    @test size(b) == (5,)
 
-a = ResizableArray(Vector{Int}(undef,0))
-a1 = _DiskArray(a,chunksize=(5,))
-@test size(a1) == (0,)
-a1[1:5] .= 1:5
-@test a1 == 1:5
-@test size(a1) == (5,)
+    a = ResizableArray(Vector{Int}(undef,0))
+    a1 = _DiskArray(a,chunksize=(5,))
+    @test size(a1) == (0,)
+    a1[1:5] .= 1:5
+    @test a1 == 1:5
+    @test size(a1) == (5,)
+    @test setindex_count(a1) == 1
+end

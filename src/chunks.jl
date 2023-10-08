@@ -22,11 +22,11 @@ struct RegularChunks <: ChunkType
     cs::Int
     offset::Int
     s::Int
-    function RegularChunks(cs::Int,offset::Int,s::Int)
+    function RegularChunks(cs::Integer, offset::Integer, s::Integer)
         cs>0 || throw(ArgumentError("Chunk sizes must be strictly positive"))
         -1 < offset < cs || throw(ArgumentError("Offsets must be positive and smaller than the chunk size"))
         s >= 0 || throw(ArgumentError("Negative dimension lengths are not allowed"))
-        new(cs,offset,s)
+        new(Int(cs), Int(offset), Int(s))
     end
 end
 

@@ -273,6 +273,8 @@ end
     @test DiskArrays.max_chunksize(gridc) == (5, 2, 4)
     @test_throws ArgumentError IrregularChunks([1,2,3])
     @test_throws ArgumentError IrregularChunks([0,5,4])
+    # Make sure mixed Integer types work
+    @test RegularChunks(Int32(5), 2, UInt32(10)) == RegularChunks(5, 2, 10)
 end
 
 @testset "SubsetChunks" begin

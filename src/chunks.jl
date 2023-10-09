@@ -23,10 +23,11 @@ struct RegularChunks <: ChunkType
     offset::Int
     s::Int
     function RegularChunks(cs::Integer, offset::Integer, s::Integer)
-        cs>0 || throw(ArgumentError("Chunk sizes must be strictly positive"))
-        -1 < offset < cs || throw(ArgumentError("Offsets must be positive and smaller than the chunk size"))
+        cs > 0 || throw(ArgumentError("Chunk sizes must be strictly positive"))
+        -1 < offset < cs ||
+            throw(ArgumentError("Offsets must be positive and smaller than the chunk size"))
         s >= 0 || throw(ArgumentError("Negative dimension lengths are not allowed"))
-        new(Int(cs), Int(offset), Int(s))
+        return new(Int(cs), Int(offset), Int(s))
     end
 end
 
@@ -83,9 +84,11 @@ Defines chunks along a dimension where chunk sizes are not constant but arbitrar
 struct IrregularChunks <: ChunkType
     offsets::Vector{Int}
     function IrregularChunks(offsets::Vector{Int})
-        first(offsets)==0 || throw(ArgumentError("First Offset of an Irregularchunk must be 0"))
-        all(i->offsets[i]<offsets[i+1],1:(length(offsets)-1)) || throw(ArgumentError("Offsets of an Irregularchunk must be strictly ordered"))
-        new(offsets)
+        first(offsets) == 0 ||
+            throw(ArgumentError("First Offset of an Irregularchunk must be 0"))
+        all(i -> offsets[i] < offsets[i + 1], 1:(length(offsets) - 1)) ||
+            throw(ArgumentError("Offsets of an Irregularchunk must be strictly ordered"))
+        return new(offsets)
     end
 end
 

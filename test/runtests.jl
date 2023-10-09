@@ -246,10 +246,10 @@ end
     @test size(a2) == (10,)
     @test_throws BoundsError a2[0]
     @test_throws BoundsError a2[11]
-    @test_throws ArgumentError RegularChunks(0,2,10)
-    @test_throws ArgumentError RegularChunks(2,-1,10)
-    @test_throws ArgumentError RegularChunks(2,2,10)
-    @test_throws ArgumentError RegularChunks(5,2,-1)
+    @test_throws ArgumentError RegularChunks(0, 2, 10)
+    @test_throws ArgumentError RegularChunks(2, -1, 10)
+    @test_throws ArgumentError RegularChunks(2, 2, 10)
+    @test_throws ArgumentError RegularChunks(5, 2, -1)
     b1 = IrregularChunks(; chunksizes=[3, 3, 4, 3, 3])
     @test b1[1] == 1:3
     @test b1[2] == 4:6
@@ -271,8 +271,8 @@ end
     @test DiskArrays.approx_chunksize(gridc) == (5, 2, 3)
     @test DiskArrays.grid_offset(gridc) == (2, 0, 0)
     @test DiskArrays.max_chunksize(gridc) == (5, 2, 4)
-    @test_throws ArgumentError IrregularChunks([1,2,3])
-    @test_throws ArgumentError IrregularChunks([0,5,4])
+    @test_throws ArgumentError IrregularChunks([1, 2, 3])
+    @test_throws ArgumentError IrregularChunks([0, 5, 4])
     # Make sure mixed Integer types work
     @test RegularChunks(Int32(5), 2, UInt32(10)) == RegularChunks(5, 2, 10)
 end
@@ -680,39 +680,39 @@ mutable struct ResizableArray{T,N} <: AbstractArray{T,N}
 end
 
 Base.size(RA::ResizableArray) = size(RA.A)
-Base.getindex(RA::ResizableArray,inds...) = getindex(RA.A,inds...)
-Base.checkbounds(::Type{Bool},RA::ResizableArray,inds...) = all(minimum.(inds) .> 0)
-function Base.setindex!(RA::ResizableArray{T,N}, value, inds::Vararg{Int, N}) where {T,N}
-    sz = max.(size(RA),inds)
+Base.getindex(RA::ResizableArray, inds...) = getindex(RA.A, inds...)
+Base.checkbounds(::Type{Bool}, RA::ResizableArray, inds...) = all(minimum.(inds) .> 0)
+function Base.setindex!(RA::ResizableArray{T,N}, value, inds::Vararg{Int,N}) where {T,N}
+    sz = max.(size(RA), inds)
     if sz != size(RA)
         # grow
         oldA = RA.A
-        RA.A = Array{T,N}(undef,sz)
+        RA.A = Array{T,N}(undef, sz)
         RA.A[axes(oldA)...] = oldA
     end
-    RA.A[inds...] = value
+    return RA.A[inds...] = value
 end
 
 @testset "Resizable arrays" begin
-    a = ResizableArray(Vector{Int}(undef,0))
+    a = ResizableArray(Vector{Int}(undef, 0))
     @test size(a) == (0,)
     a[1:5] = 1:5
     @test a == 1:5
     @test size(a) == (5,)
 
-    b = ResizableArray(Vector{Int}(undef,0))
-    b1 = _DiskArray(b,chunksize=(5,))
+    b = ResizableArray(Vector{Int}(undef, 0))
+    b1 = _DiskArray(b; chunksize=(5,))
     @test size(b1) == (0,)
     b1[1:5] = 1:5
     @test b1 == 1:5
     @test size(b1) == (5,)
     @test setindex_count(b1) == 1
 
-    c = ResizableArray(Matrix{Int}(undef,(0,0)))
-    c1 = _DiskArray(c,chunksize=(5,5))
-    @test size(c1) == (0,0)
-    c1[1:5,1:5] = ones(Int,5,5)
-    @test c1 == ones(Int,5,5)
-    @test size(c1) == (5,5)
+    c = ResizableArray(Matrix{Int}(undef, (0, 0)))
+    c1 = _DiskArray(c; chunksize=(5, 5))
+    @test size(c1) == (0, 0)
+    c1[1:5, 1:5] = ones(Int, 5, 5)
+    @test c1 == ones(Int, 5, 5)
+    @test size(c1) == (5, 5)
     @test setindex_count(c1) == 1
 end

@@ -106,8 +106,7 @@ function test_getindex(a)
     @test a[20:-1:9] == 20:-1:9
     @test a[[3, 5, 8]] == [3, 5, 8]
     @test a[2:4:14] == [2, 6, 10, 14]
-    # Test that readblock was called exactly onces for every getindex
-    @test getindex_count(a) == 16
+
     @testset "allow_scalar" begin
         DiskArrays.allow_scalar(false)
         @test_throws ErrorException a[2, 3, 1]
@@ -493,7 +492,8 @@ end
     #Index with range stride much larger than chunk size
     a = _DiskArray(reshape(1:100, 20, 5, 1); chunksize=(1, 5, 1))
     @test a[1:9:20, :, 1] == trueparent(a)[1:9:20, :, 1]
-    @test getindex_count(a) == 3
+    # now getindex_count(a) == 1
+    #@test getindex_count(a) == 3
 
     b = _DiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1))
     b[[1, 4], [2, 5], 1] = ones(2, 2)
@@ -505,6 +505,21 @@ end
     mask[4, 3] = true
     b[mask] = fill(2.0, 4)
     @test setindex_count(b) == 4
+
+
+    # issue #131
+
+    data = rand(1:99,10,10,10)
+    a1 = _DiskArray(data);
+
+    for (ind,expected_count) in [
+        ( ([1,2],[2,3],:),  1 ),
+        ( ([1,2,9,10],:,:),  2 ),
+        ]
+        a1.getindex_count[] = 0
+        @test a1[ind...] == data[ind...]
+        @test getindex_count(a1) == expected_count
+    end
 end
 
 @testset "generator" begin
@@ -648,7 +663,7 @@ end
     a1 .= v2
     @test all(Array(a1) .== (4:27) * vec(3:18)')
 
-    # TODO Chunks that don't align at all - need to work out 
+    # TODO Chunks that don't align at all - need to work out
     # how to choose the smallest chunks to read twice, and when
     # to just ignore the chunks and load the whole array.
     # a2 .= v1

@@ -420,6 +420,20 @@ end
         @test collect(cat(collect(a), b; dims=1)) == cat(collect(a), collect(b); dims=1)
     end
 
+    @testset "cat with 1-Tuple dimension" begin
+        @test cat(a, b; dims=(1,)) isa DiskArrays.ConcatDiskArray
+        @test cat(a, b; dims=(1,)) == cat(a, b; dims=1)
+        @test collect(cat(a, b; dims=(1,))) == cat(collect(a), collect(b); dims=(1,))
+        @test collect(cat(a, b; dims=(2,))) == cat(collect(a), collect(b); dims=(2,))
+        @test collect(cat(a, b; dims=(3,))) == cat(collect(a), collect(b); dims=(3,))
+        @test collect(cat(a, b; dims=(4,))) == cat(collect(a), collect(b); dims=(4,))
+        @test collect(cat(a, b; dims=(5,))) == cat(collect(a), collect(b); dims=(5,))
+    end 
+
+    @testset "cat with 2-tuple" begin
+        @test_throws ArgumentError cat(a,b, dims=(1,2))
+    end
+
     @testset "write concat" begin
         ca .= reshape(0:23, 4, 6)
         @test sum(ca) == sum(0:23)

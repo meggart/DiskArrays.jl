@@ -16,7 +16,6 @@ if VERSION >= v"1.9.0"
     Aqua.test_undefined_exports(DiskArrays)
     Aqua.test_project_extras(DiskArrays)
     Aqua.test_deps_compat(DiskArrays)
-    Aqua.test_project_toml_formatting(DiskArrays)
 end
 
 @testset "allow_scalar" begin

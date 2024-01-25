@@ -142,6 +142,7 @@ end
 function test_view(a)
     v = view(a, 2:3, 2:4, 1)
 
+    @test @inferred(size(v)) == (2,3)
     v[1:2, 1] = [1, 2]
     v[1:2, 2:3] = [4 4; 4 4]
     @test v[1:2, 1] == [1, 2]

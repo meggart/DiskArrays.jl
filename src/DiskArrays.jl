@@ -59,4 +59,7 @@ end
 @implement_cat AbstractDiskArray
 @implement_generator AbstractDiskArray
 
+#And we define the test types
+include("util/testtypes.jl")
+
 end # module

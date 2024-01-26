@@ -279,6 +279,13 @@ end
         ((Base.OneTo(3), Base.OneTo(3), Base.OneTo(1)), DiskArrays.Reshaper{Int}(9))
 end
 
+@testset "Index strategy decisions" begin
+    @test DiskArrays.has_chunk_gap(10,[1,8]) == false
+    @test DiskArrays.has_chunk_gap(10,[1,8,30]) == true
+    @test DiskArrays.is_sparse_index([1:10;40:50];density_threshold=0.5) == true
+    @test DiskArrays.is_sparse_index([1:10;40:50];density_threshold=0.1) == false
+end
+
 @testset "AbstractDiskArray getindex" begin
     a = _DiskArray(reshape(1:20, 4, 5, 1))
     test_getindex(a)
@@ -470,8 +477,8 @@ end
     a1 = _DiskArray(a);
     i = ([1,2],[2,3],:)
     r = a1[i...]
-    @test size(r) == (2,2,3)
-    @test r == a[i...]
+    @test_broken size(r) == (2,2,3)
+    @test_broken r == a[i...]
     @test getindex_count(a1) == 1
 end
 

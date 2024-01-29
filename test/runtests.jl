@@ -44,8 +44,8 @@ function test_getindex(a)
     @test a[:, 3, 1, [1]] == reshape(9:12, 4, 1)
     # Test bitmask indexing
     m = falses(4, 5, 1)
-    m[2, :, 1] .= true
-    @test a[m] == [2, 6, 10, 14, 18]
+    m[2, [1,2,3,5], 1] .= true
+    @test a[m] == [2, 6, 10, 18]
     # Test linear indexing
     @test a[11:15] == 11:15
     @test a[20:-1:9] == 20:-1:9

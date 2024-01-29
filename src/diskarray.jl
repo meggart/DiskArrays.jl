@@ -76,24 +76,39 @@ function _resolve_indices(cs,::Tuple{},output_size,temp_sizes,output_indices,tem
     _resolve_indices(Base.tail(cs),(),output_size,temp_sizes,output_indices,temp_indices,data_indices)
 end
 
-resolve_indices(a, ::Tuple{Colon}) = length(a), size(a), Colon(), Colon(), Base.OneTo.(size(a))
+resolve_indices(a, ::Tuple{Colon}) = (length(a),), size(a), (Colon(),), (Colon(),), Base.OneTo.(size(a))
 resolve_indices(a, i::Tuple{<:CartesianIndex}) = resolve_indices(a, only(i).I)
 resolve_indices(a, i::Tuple{<:CartesianIndices}) = resolve_indices(a, only(i).indices)
+function resolve_indices(a, i::Tuple{<:AbstractVector})
+    inds = first(i)
+    toread = view(CartesianIndices(size(a)),inds)
 
+    length.(i)
+end
 #outsize, tempsize, outinds,tempinds,datainds,cs
-process_index(inow::Integer, cs) = ((), 1, (), (1:1,),(inow:inow,), Base.tail(cs))
+process_index(inow::Integer, cs) = ((), 1, (), (1,),(inow:inow,), Base.tail(cs))
 function process_index(::Colon, cs)
     s = arraysize_from_chunksize(first(cs))
-    ((s,), (s,), (Colon(),), (Colon(),), (Base.OneTo(s),), Base.tail(cs))
+    (s,), (s,), (Colon(),), (Colon(),), (Base.OneTo(s),), Base.tail(cs)
 end
 function process_index(i::AbstractUnitRange, cs)
-    ((length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs))
+    (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
 end
-# function process_index(i::AbstractVector{<:Integer}, cs)
-
-
-# end
-
+function process_index(i::AbstractVector{<:Integer}, cs)
+    indmin,indmax = extrema(i)
+    (length(i),), ((indmax-indmin+1),), (Colon(),), ((i.-(indmin-1)),), (indmin:indmax,), Base.tail(cs) 
+end
+function process_index(i::AbstractArray{Bool,N}, cs) where N
+    csnow, csrem = splitcs(size(i),(),cs)
+    s = arraysize_from_chunksize.(csnow)
+    cindmin,cindmax = extrema(view(CartesianIndices(s),i))
+    indmin,indmax = cindmin.I,cindmax.I
+    tempsize = indmax .- indmin .+ 1
+    tempinds = view(i,range.(indmin,indmax)...)
+    (sum(i),), tempsize, (Colon(),),(tempinds,), range.(indmin,indmax), csrem
+end
+splitcs(si,csnow,csrem) = splitcs(Base.tail(si),(csnow...,first(csrem)),Base.tail(csrem))
+splitcs(::Tuple{},csnow,csrem) = (csnow,csrem)
 
 
 viewifnecessary(a,::Tuple{Vararg{Colon}}) = a
@@ -105,8 +120,11 @@ maybe_unwrap(a,::Tuple{Vararg{<:Integer}}) = a[1]
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     checkscalar(i)
     outputarray = Array{eltype(a)}(undef)
-    Base.to_indices(a,i)
-    readblock!(a, outputarray, map(j->j:j,i)...)
+    i = Base.to_indices(a,i)
+    j = map(1:ndims(a)) do d
+        d<=length(i) ? (i[d]:i[d]) : 1:1
+    end
+    readblock!(a, outputarray, j...)
     only(outputarray)
 end
 
@@ -123,8 +141,16 @@ function getindex_disk(a, i...)
     outputarray = Array{eltype(a)}(undef, output_size...)  
     temparray = Array{eltype(a)}(undef, temparray_size...)  
     readblock!(a, temparray, data_indices...)
+    transfer_results!(outputarray, temparray, output_indices, temparray_indices)
+end
+
+function transfer_results!(outputarray, temparray, output_indices, temparray_indices)
     outputarray[output_indices...] = view(temparray,temparray_indices...)
     outputarray
+end
+function transfer_results!(o,t,oi::Tuple{Vararg{Int}},ti::Tuple{Vararg{Int}}) 
+    o[oi...] = t[ti...]
+    o
 end
 
 function setindex_disk!(a::AbstractArray{T}, v::T, i...) where {T<:AbstractArray}

@@ -202,6 +202,14 @@ function chunktype_from_chunksizes(chunks)
     end
 end
 
+"""
+    arraysize_from_chunksize(g::ChunkType)
+
+Returns the size of the dimension represented by a chunk object. 
+"""
+arraysize_from_chunksize(cs::DiskArrays.RegularChunks)=cs.s
+arraysize_from_chunksize(cs::DiskArrays.IrregularChunks)=last(cs.offsets)
+
 # DiskArrays interface
 
 """

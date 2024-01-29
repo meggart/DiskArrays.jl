@@ -27,27 +27,104 @@ function allow_multi_chunk_access(a)
     false
 end
 
-# This is for filtering "true" batch getindex functions with vector indexing from
-# excess singleton dimensions with values like [1] and 1:1
-is_vector_arg(j::AbstractArray) = length(j) != 1
-is_vector_arg(_) = false
-is_vector_arg(::AbstractRange) = false
+"""
+    resolve_indices(a, i)
+
+Determines a list of tuples used to perform the read or write operations. The returned values are:
+
+- `outsize` size of the output array
+- `temp_size` size of the temp array passed to `readblock`
+- `output_indices` indices for copying into the output array
+- `temp_indices` indices for reading from temp array
+- `data_indices` indices for reading from data array
+
+"""
+Base.@assume_effects :foldable resolve_indices(a, i) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
+function _resolve_indices(cs,i,output_size,temp_sizes,output_indices,temp_indices,data_indices)
+    inow = first(i)
+    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(inow, cs)
+    output_size = (output_size...,outsize...)
+    output_indices = (output_indices...,outinds...)
+    temp_sizes = (temp_sizes...,tempsize...)
+    temp_indices = (temp_indices...,tempinds...)
+    data_indices = (data_indices...,datainds...)
+    _resolve_indices(cs,Base.tail(i),output_size,temp_sizes,output_indices,temp_indices, data_indices)
+end
+_resolve_indices(::Tuple{},::Tuple{},output_size,temp_sizes,output_indices,temp_indices,data_indices) = output_size,temp_sizes,output_indices,temp_indices,data_indices
+#No dimension left in array, only singular indices allowed
+function _resolve_indices(::Tuple{},i,output_size,temp_sizes,output_indices,temp_indices,data_indices)
+    inow = first(i)
+    if inow isa Integer
+        inow == 1 || throw(ArgumentError("Trailing indices must be 1"))
+        _resolve_indices((),Base.tail(i),output_size,temp_sizes,output_indices,temp_indices,data_indices)
+    elseif inow isa AbstractVector
+         (length(inow)==1 && first(inow)==1) || throw(ArgumentError("Trailing indices must be 1"))
+         output_size = (output_size...,1)
+         output_indices = (output_indices...,1)
+         _resolve_indices((),Base.tail(i),output_size,temp_sizes,output_indices,temp_indices,data_indices)
+    else
+        throw(ArgumentError("Trailing indices must be 1"))
+    end
+end
+#Still dimensions left, but no indices available
+function _resolve_indices(cs,::Tuple{},output_size,temp_sizes,output_indices,temp_indices,data_indices)
+    csnow = first(cs)
+    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Wrong indexing"))
+    data_indices = (data_indices...,1:1)
+    temp_sizes = (temp_sizes...,1)
+    temp_indices = (temp_indices...,1)
+    _resolve_indices(Base.tail(cs),(),output_size,temp_sizes,output_indices,temp_indices,data_indices)
+end
+
+resolve_indices(a, ::Tuple{Colon}) = length(a), size(a), Colon(), Colon(), Base.OneTo.(size(a))
+resolve_indices(a, i::Tuple{<:CartesianIndex}) = resolve_indices(a, only(i).I)
+resolve_indices(a, i::Tuple{<:CartesianIndices}) = resolve_indices(a, only(i).indices)
+
+#outsize, tempsize, outinds,tempinds,datainds,cs
+process_index(inow::Integer, cs) = ((), 1, (), (1:1,),(inow:inow,), Base.tail(cs))
+function process_index(::Colon, cs)
+    s = arraysize_from_chunksize(first(cs))
+    ((s,), (s,), (Colon(),), (Colon(),), (Base.OneTo(s),), Base.tail(cs))
+end
+function process_index(i::AbstractUnitRange, cs)
+    ((length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs))
+end
+# function process_index(i::AbstractVector{<:Integer}, cs)
+
+
+# end
+
+
+
+viewifnecessary(a,::Tuple{Vararg{Colon}}) = a
+viewifnecessary(a,i) = view(a,i...)
+maybe_unwrap(a,_) = a
+maybe_unwrap(a,::Tuple{Vararg{<:Integer}}) = a[1]
+
+
+function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
+    checkscalar(i)
+    outputarray = Array{eltype(a)}(undef)
+    Base.to_indices(a,i)
+    readblock!(a, outputarray, map(j->j:j,i)...)
+    only(outputarray)
+end
 
 function getindex_disk(a, i...)
-    checkscalar(i)
-    i_multi = resolve_multiindex(a,i)
-    inds, trans = interpret_indices_disk(a, i_multi)
-    inds = map(maybe2range,inds)
-    chunk_gaps = any(map(has_chunk_gap,approx_chunksize(eachchunk(a)),inds))
-    sparse_index = any(map(is_sparse_index,inds))
-    if sparse_index && (chunk_gaps || allow_multi_chunk_access(a))
-        batchgetindex(a, i...)
-    else
-        data = Array{eltype(a)}(undef, map(length, inds)...)
-        readblock!(a, data, inds...)
-        #Transform the output to match shape of indices
-        trans(data)
-    end
+    # i_multi = resolve_multiindex(a,i)
+    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i)
+    # inds, trans = interpret_indices_disk(a, i_multi)
+    # inds = map(maybe2range,inds)
+    # chunk_gaps = any(map(has_chunk_gap,approx_chunksize(eachchunk(a)),inds))
+    # sparse_index = any(map(is_sparse_index,inds))
+    # if sparse_index && (chunk_gaps || allow_multi_chunk_access(a))
+    #     batchgetindex(a, i...)
+    # else
+    outputarray = Array{eltype(a)}(undef, output_size...)  
+    temparray = Array{eltype(a)}(undef, temparray_size...)  
+    readblock!(a, temparray, data_indices...)
+    outputarray[output_indices...] = view(temparray,temparray_indices...)
+    outputarray
 end
 
 function setindex_disk!(a::AbstractArray{T}, v::T, i...) where {T<:AbstractArray}
@@ -101,8 +178,7 @@ _convert_index(i::Integer,s::Integer) = i:i
 _convert_index(i::AbstractVector, s::Integer) = i
 _convert_index(i::MultiIndex{<:Any,<:Any,D},s::Integer) where D = first(i.bb[D]):last(i.bb[D])
 _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
-function extract_indices_and_dropdims(inds,intdims,inow,s,r)
-    inew,
+
 
 
 function interpret_indices_disk(

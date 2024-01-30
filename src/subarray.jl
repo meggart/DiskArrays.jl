@@ -16,13 +16,11 @@ _replace_colon(s, r) = r
 # Diskarrays.jl interface
 function readblock!(a::SubDiskArray, aout, i::OrdinalRange...)
     pinds = parentindices(view(a.v, i...))
-    inds, resh = interpret_indices_disk(parent(a.v), pinds)
-    return readblock!(parent(a.v), reshape(aout, map(length, inds)...), inds...)
+    getindex_disk!(aout, parent(a.v), pinds...)
 end
 function writeblock!(a::SubDiskArray, v, i::OrdinalRange...)
     pinds = parentindices(view(a.v, i...))
-    inds, resh = interpret_indices_disk(parent(a.v), pinds)
-    return writeblock!(parent(a.v), reshape(v, map(length, inds)...), inds...)
+    setindex_disk!(parent(a.v), v, pinds...)
 end
 eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a.v.parent), a.v)
 function eachchunk_view(::Chunked, vv)

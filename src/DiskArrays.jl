@@ -7,7 +7,7 @@ module DiskArrays
     read(path, String)
 end DiskArrays
 
-export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
+export AbstractDiskArray, eachchunk, ChunkIndex, ChunkIndices
 
 include("scalar.jl")
 include("multiindex.jl")

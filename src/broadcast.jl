@@ -123,6 +123,8 @@ function maybeonerange(out, sizes, ranges)
     return maybeonerange((out..., repsingle(s1, r1)), sr, rr)
 end
 maybeonerange(out, ::Tuple{}, ranges) = out
+maybeonerange(out, sizes, ::Tuple{}) = out
+maybeonerange(out, ::Tuple{}, ::Tuple{}) = out
 maybeonerange(sizes, ranges) = maybeonerange((), sizes, ranges)
 splittuple(x1, xr...) = x1, xr
 

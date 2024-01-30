@@ -476,6 +476,14 @@ end
     @test r[] == 0
 end
 
+@testset "Broadcasted assignment with trailing singleton dimensions" begin
+    a1 = rand(10,9,1,1)
+    a_disk1 = _DiskArray(a1)
+    s = zeros(10,9)
+    s .= a_disk1
+    @test s == a1[:,:,1,1]
+end
+
 @testset "Getindex/Setindex with vectors" begin
     a = _DiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]

@@ -7,7 +7,7 @@ export AccessCountDiskArray, UnchunkedDiskArray, getindex_count, setindex_count,
 """
     AccessCountDiskArray(A; chunksize)
     
-An array that counte `getindex` and `setindex` calls, to debug
+An array that counts `getindex` and `setindex` calls, to debug
 and optimise chunk access.
 
 `getindex_count(A)` and `setindex_count(A)` can be used to check the

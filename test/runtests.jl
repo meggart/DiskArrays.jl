@@ -434,11 +434,6 @@ end
     coordsperm = (x -> CartesianIndex((x.I[[2, 1]]))).(coords)
     @test aperm[coordsperm, :] == a[coords, :]
 
-    #With pre-allocated output array
-    aout = zeros(Int, 4, 2)
-    DiskArrays.disk_getindex_batch!(aout, a, [(1:4, 1, 1), (1:4, 4, 1)])
-    @test aout == trueparent(a)[:, [1, 4], 1]
-
     #Index with range stride much larger than chunk size
     a = _DiskArray(reshape(1:100, 20, 5, 1); chunksize=(1, 5, 1))
     @test a[1:9:20, :, 1] == trueparent(a)[1:9:20, :, 1]

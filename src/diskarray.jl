@@ -37,10 +37,9 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `output_indices` indices for copying into the output array
 - `temp_indices` indices for reading from temp array
 - `data_indices` indices for reading from data array
-
 """
 Base.@assume_effects :foldable resolve_indices(a, i) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
-Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector}) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
+Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}}) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
 function _resolve_indices(cs,i,output_size,temp_sizes,output_indices,temp_indices,data_indices)
     inow = first(i)
     outsize, tempsize, outinds,tempinds,datainds,cs = process_index(inow, cs)
@@ -81,7 +80,7 @@ resolve_indices(a, ::Tuple{Colon}) = (length(a),), size(a), (Colon(),), (Colon()
 resolve_indices(a, i::Tuple{<:CartesianIndex}) = resolve_indices(a, only(i).I)
 resolve_indices(a, i::Tuple{<:CartesianIndices}) = resolve_indices(a, only(i).indices)
 
-function resolve_indices(a, i::Tuple{<:AbstractVector})
+function resolve_indices(a, i::Tuple{<:AbstractVector{<:Integer}})
     inds = first(i)
     toread = view(CartesianIndices(size(a)),inds)
     cindmin,cindmax = extrema(toread)
@@ -103,6 +102,7 @@ function process_index(i::AbstractUnitRange, cs)
 end
 function process_index(i::AbstractVector{<:Integer}, cs)
     indmin,indmax = extrema(i)
+    
     (length(i),), ((indmax-indmin+1),), (Colon(),), ((i.-(indmin-1)),), (indmin:indmax,), Base.tail(cs) 
 end
 function process_index(i::AbstractArray{Bool,N}, cs) where N
@@ -146,15 +146,15 @@ function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
 end
 
 getindex_disk(a, i...) = getindex_disk!(nothing, a, i...)
-
-function getindex_disk!(outputarray, a, i...)
+function create_outputarray(out,a,output_size)
+    size(out) == output_size || throw(ArgumentError("Expected output array size of $output_size"))
+    out
+end
+create_outputarray(::Nothing,a,output_size) = Array{eltype(a)}(undef, output_size...)
+function getindex_disk!(out, a, i...)
     output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i)
-    @debug output_size, temparray_size, output_indices, temparray_indices, data_indices
-    if outputarray === nothing
-        outputarray = Array{eltype(a)}(undef, output_size...)
-    else
-        size(outputarray) == output_size || throw(ArgumentError("Expected output array size of $output_size"))
-    end
+    #@debug output_size, temparray_size, output_indices, temparray_indices, data_indices
+    outputarray = create_outputarray(out,a,output_size)
     temparray = Array{eltype(a)}(undef, temparray_size...)  
     readblock!(a, temparray, data_indices...)
     transfer_results!(outputarray, temparray, output_indices, temparray_indices)

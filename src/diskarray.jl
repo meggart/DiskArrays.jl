@@ -82,8 +82,13 @@ resolve_indices(a, i::Tuple{<:CartesianIndices}) = resolve_indices(a, only(i).in
 function resolve_indices(a, i::Tuple{<:AbstractVector})
     inds = first(i)
     toread = view(CartesianIndices(size(a)),inds)
-
-    length.(i)
+    cindmin,cindmax = extrema(toread)
+    indmin,indmax = cindmin.I,cindmax.I
+    tempsize = indmax .- indmin .+ 1
+    tempoffset = cindmin - oneunit(cindmin)
+    datainds = range.(indmin,indmax)
+    tempinds = toread .- tempoffset
+    length.(i),tempsize,(Colon(),),(tempinds,),datainds
 end
 #outsize, tempsize, outinds,tempinds,datainds,cs
 process_index(inow::Integer, cs) = ((), 1, (), (1,),(inow:inow,), Base.tail(cs))
@@ -107,6 +112,16 @@ function process_index(i::AbstractArray{Bool,N}, cs) where N
     tempinds = view(i,range.(indmin,indmax)...)
     (sum(i),), tempsize, (Colon(),),(tempinds,), range.(indmin,indmax), csrem
 end
+function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs) where N
+    csnow, csrem = splitcs(first(i).I,(),cs)
+    s = arraysize_from_chunksize.(csnow)
+    cindmin,cindmax = extrema(view(CartesianIndices(s),i))
+    indmin,indmax = cindmin.I,cindmax.I
+    tempsize = indmax .- indmin .+ 1
+    tempoffset = cindmin - oneunit(cindmin)
+    tempinds = i .- tempoffset
+    (length(i),), tempsize, (Colon(),), (tempinds,), range.(indmin,indmax), csrem
+end
 splitcs(si,csnow,csrem) = splitcs(Base.tail(si),(csnow...,first(csrem)),Base.tail(csrem))
 splitcs(::Tuple{},csnow,csrem) = (csnow,csrem)
 
@@ -119,7 +134,7 @@ maybe_unwrap(a,::Tuple{Vararg{<:Integer}}) = a[1]
 
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     checkscalar(i)
-    outputarray = Array{eltype(a)}(undef)
+    outputarray = Array{eltype(a)}(undef,map(_->1,size(a))...)
     i = Base.to_indices(a,i)
     j = map(1:ndims(a)) do d
         d<=length(i) ? (i[d]:i[d]) : 1:1
@@ -131,6 +146,7 @@ end
 function getindex_disk(a, i...)
     # i_multi = resolve_multiindex(a,i)
     output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i)
+    @debug output_size, temparray_size, output_indices, temparray_indices, data_indices
     # inds, trans = interpret_indices_disk(a, i_multi)
     # inds = map(maybe2range,inds)
     # chunk_gaps = any(map(has_chunk_gap,approx_chunksize(eachchunk(a)),inds))

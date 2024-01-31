@@ -476,12 +476,16 @@ end
     @test r[] == 0
 end
 
-@testset "Broadcasted assignment with trailing singleton dimensions" begin
-    a1 = rand(10,9,1,1)
-    a_disk1 = _DiskArray(a1)
-    s = zeros(10,9)
-    s .= a_disk1
-    @test s == a1[:,:,1,1]
+if VERSION >= v"1.7.0"
+    @testset "Broadcasted assignment with trailing singleton dimensions" begin
+        a1 = rand(10,9,1,1)
+        a_disk1 = _DiskArray(a1)
+        s = zeros(10,9)
+        @test begin
+            s .= a_disk1
+            s == a1[:,:,1,1]
+        end
+    end
 end
 
 @testset "Getindex/Setindex with vectors" begin

@@ -22,6 +22,7 @@ include("rechunk.jl")
 include("cat.jl")
 include("generator.jl")
 include("zip.jl")
+include("show.jl")
 
 # The all-in-one macro
 
@@ -41,6 +42,7 @@ macro implement_diskarray(t)
         @implement_batchgetindex $t
         @implement_cat $t
         @implement_zip $t
+        @implement_show $t
         @implement_generator $t
     end
 end
@@ -58,5 +60,6 @@ end
 @implement_batchgetindex AbstractDiskArray
 @implement_cat AbstractDiskArray
 @implement_generator AbstractDiskArray
+@implement_show AbstractDiskArray
 
 end # module

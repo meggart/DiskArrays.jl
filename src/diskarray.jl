@@ -240,10 +240,3 @@ macro implement_setindex(t)
         end
     end
 end
-
-function Base.show(io::IO, ::MIME"text/plain", X::AbstractDiskArray)
-    return println(io, "Disk Array with size ", join(size(X), " x "))
-end
-function Base.show(io::IO, X::AbstractDiskArray)
-    return println(io, "Disk Array with size ", join(size(X), " x "))
-end

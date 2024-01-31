@@ -2,7 +2,7 @@ module TestTypes
 
 import ..DiskArrays
 
-export AccessCountDiskArray, UnchunkedDiskArray, getindex_count, setindex_count, trueparent
+export AccessCountDiskArray, ChunkedDiskArray, UnchunkedDiskArray, getindex_count, setindex_count, trueparent
 
 """
     AccessCountDiskArray(A; chunksize)
@@ -58,6 +58,24 @@ function trueparent(
 ) where {T,N,perm,iperm}
     return permutedims(trueparent(a.a.parent), perm)
 end
+
+"""
+    ChunkedDiskArray(A; chunksize)
+    
+A generic `AbstractDiskArray` that can wrap any other `AbstractArray`, with custom `chunksize`.
+"""
+struct ChunkedDiskArray{T,N,A<:AbstractArray{T,N}} <: DiskArrays.AbstractDiskArray{T,N}
+    parent::A
+    chunksize::NTuple{N,Int}
+end
+ChunkedDiskArray(a; chunksize=size(a)) = ChunkedDiskArray(a, chunksize)
+
+Base.size(a::ChunkedDiskArray) = size(a.parent)
+
+DiskArrays.haschunks(::ChunkedDiskArray) = DiskArrays.Chunked()
+DiskArrays.eachchunk(a::ChunkedDiskArray) = DiskArrays.GridChunks(a, a.chunksize)
+DiskArrays.readblock!(a::ChunkedDiskArray, aout, i::AbstractUnitRange...) = aout .= a.parent[i...]
+DiskArrays.writeblock!(a::ChunkedDiskArray, v, i::AbstractUnitRange...) = view(a.parent, i...) .= v
 
 """
     UnchunkedDiskArray(A)

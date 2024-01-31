@@ -257,10 +257,20 @@ end
     @test subsetchunks(r2, [2:9; 11:18]) == RegularChunks(3, 1, 16)
 end
 
-@testset "Unchunked DiskArrays" begin
+@testset "ChunkedDiskArray" begin
+    a = ChunkedDiskArray(reshape(1:1000, (10, 20, 5)); chunksize=(2, 5, 1))
+    v = view(a, 1:2, 1, 1:3)
+    @test v == [1 201 401; 2 202 402]
+    @test DiskArrays.haschunks(a) == DiskArrays.Chunked()
+    @test size(DiskArrays.eachchunk(a)) == (5, 4, 5)
+end
+
+@testset "UnchunkedDiskArray" begin
     a = UnchunkedDiskArray(reshape(1:1000, (10, 20, 5)))
     v = view(a, 1:2, 1, 1:3)
     @test v == [1 201 401; 2 202 402]
+    @test DiskArrays.haschunks(a) == DiskArrays.Unchunked()
+    @test size(DiskArrays.eachchunk(a)) == (1, 1, 1)
 end
 
 @testset "Index interpretation" begin

@@ -40,6 +40,10 @@ Determines a list of tuples used to perform the read or write operations. The re
 """
 Base.@assume_effects :foldable resolve_indices(a, i) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
 Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}}) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),())
+Base.@assume_effects :foldable need_batch(a,i) = _need_batch(eachchunk(a).chunks,i)
+function _need_batch(cs, i)
+    res, csrem = need_batch_index(first(i),)
+end
 function _resolve_indices(cs,i,output_size,temp_sizes,output_indices,temp_indices,data_indices)
     inow = first(i)
     outsize, tempsize, outinds,tempinds,datainds,cs = process_index(inow, cs)
@@ -190,121 +194,6 @@ function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
     writeblock!(a,temparray,data_indices...)
 end
 
-# """
-# Function that translates a list of user-supplied indices into plain ranges and
-# integers for reading blocks of data. This function respects additional indexing
-# rules like omitting additional trailing indices.
-
-# The passed array handle A must implement methods for `Base.size` and `Base.ndims`
-# The function returns two values:
-
-#   1. a tuple whose length equals `ndims(A)` containing only unit
-#   ranges and integers. This contains the minimal "bounding box" of data that
-#   has to be read from disk.
-#   2. A callable object which transforms the hyperrectangle read from disk to
-#   the actual shape that represents the Base getindex behavior.
-# """
-# function interpret_indices_disk(A, r::Tuple)
-#     throw(ArgumentError("Indices of type $(typeof(r)) are not yet supported"))
-# end
-
-# #Read the entire array and reshape to 1D in the end
-# function interpret_indices_disk(A, ::Tuple{Colon})
-#     return map(Base.OneTo, size(A)), Reshaper(prod(size(A)))
-# end
-
-# interpret_indices_disk(A, r::Tuple{<:CartesianIndex}) = interpret_indices_disk(A, r[1].I)
-
-# function interpret_indices_disk(A, r::Tuple{<:CartesianIndices})
-#     return interpret_indices_disk(A, r[1].indices)
-# end
-
-# extract_indices_and_dropdims(sa,r) = _convert_index((),(),1,sa,r)
-# _convert_index(i::Integer,s::Integer) = i:i
-# _convert_index(i::AbstractVector, s::Integer) = i
-# _convert_index(i::MultiIndex{<:Any,<:Any,D},s::Integer) where D = first(i.bb[D]):last(i.bb[D])
-# _convert_index(::Colon, s::Integer) = Base.OneTo(Int(s))
-
-
-
-# function interpret_indices_disk(
-#     A, r::NTuple{N,Union{Integer,AbstractVector,Colon}}
-# ) where {N}
-#     if ndims(A) == N
-#         inds = map(_convert_index, r, size(A))
-#         resh = DimsDropper(findints(r))
-#         return inds, resh
-#     elseif ndims(A) < N
-#         n_add_dim = sum((ndims(A) + 1):N) do i
-#             first(r[i]) == 1 || throw(BoundsError(A, r))
-#             isa(r[i], AbstractArray)
-#         end
-#         _, rshort = commonlength(size(A), r)
-#         inds, resh1 = interpret_indices_disk(A, rshort)
-#         if n_add_dim > 0
-#             ladddim = ntuple(_ -> 1, n_add_dim)
-#             oldsize = result_size(inds, resh1)
-#             resh2 = transformstack(resh1, Reshaper((oldsize..., ladddim...)))
-#             inds, resh2
-#         else
-#             inds, resh1
-#         end
-#     else
-#         size(A, N + 1) == 1 || throw(BoundsError(A, r))
-#         return interpret_indices_disk(A, (r..., 1))
-#     end
-# end
-
-
-# function interpret_indices_disk(A::AbstractVector, r::NTuple{1,AbstractVector})
-#     inds = map(_convert_index, r, size(A))
-#     resh = DimsDropper(findints(r))
-#     return inds, resh
-# end
-
-# function interpret_indices_disk(A, r::Tuple{<:AbstractArray{<:Bool}})
-#   ba = r[1]
-#   if ndims(A)==ndims(ba)
-#     inds = getbb(ba)
-#     resh = a -> a[view(ba,inds...)]
-#     return inds, resh
-#   elseif ndims(ba)==1
-#     interpret_indices_disk(A,(reshape(ba,size(A)),))
-#   else
-#     throw(BoundsError(A, r))
-#   end
-# end
-
-# function interpret_indices_disk(A, r::NTuple{1,AbstractVector})
-#     lininds = first(r)
-#     cartinds = CartesianIndices(A)
-#     mi, ma = extrema(view(cartinds, lininds))
-#     inds = map((i1, i2) -> i1:i2, mi.I, ma.I)
-#     resh = a -> map(lininds) do ii
-#         a[cartinds[ii] - mi + oneunit(mi)]
-#     end
-#     return inds, resh
-# end
-
-# struct Reshaper{I}
-#     reshape_indices::I
-# end
-# (r::Reshaper)(a) = reshape(a, r.reshape_indices)
-# result_size(_, r::Reshaper) = r.reshape_indices
-# struct DimsDropper{D}
-#     d::D
-# end
-# (d::DimsDropper)(a) = length(d.d) == ndims(a) ? a[1] : dropdims(a; dims=d.d)
-# function result_size(inds, d::DimsDropper)
-#     return getindex.(Ref(inds), filter(!in(d.d), ntuple(identity, length(inds))))
-# end
-
-# struct TransformStack{S}
-#     s::S
-# end
-# transformstack(_::Union{Reshaper,DimsDropper,typeof(identity)}, s2::Reshaper) = s2
-# transformstack(s...) = TransformStack(filter(!=(identity), s))
-# (s::TransformStack)(a) = ∘(s.s...)(a)
 
 maybe2range(i::AbstractRange) = i
 function maybe2range(inds::T)::Union{T,StepRange{Int,Int},UnitRange{Int}} where T<:AbstractVector{Int}
@@ -324,20 +213,6 @@ function maybe2range(inds::T)::Union{T,StepRange{Int,Int},UnitRange{Int}} where 
         return first(inds):rstep:last(inds)
     end
 end
-
-
-#Some helper functions
-"For two given tuples return a truncated version of both so they have common length"
-commonlength(a, b) = _commonlength((first(a),), (first(b),), Base.tail(a), Base.tail(b))
-commonlength(::Tuple{}, b) = (), ()
-commonlength(a, ::Tuple{}) = (), ()
-commonlength(a::Tuple{}, ::Tuple{}) = (), ()
-function _commonlength(a1, b1, a, b)
-    return _commonlength((a1..., first(a)), (b1..., first(b)), Base.tail(a), Base.tail(b))
-end
-_commonlength(a1, b1, ::Tuple{}, b) = (a1, b1)
-_commonlength(a1, b1, a, ::Tuple{}) = (a1, b1)
-_commonlength(a1, b1, a::Tuple{}, ::Tuple{}) = (a1, b1)
 
 "Find the indices of elements containing integers in a Tuple"
 findints(x) = _findints((), 1, x...)

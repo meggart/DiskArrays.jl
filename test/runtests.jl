@@ -495,7 +495,7 @@ end
     r = a1[i...]
     @test_broken size(r) == (2,2,3)
     @test_broken r == a[i...]
-    @test_broken getindex_count(a1) == 1
+    @test getindex_count(a1) == 1
 end
 
 @testset "generator" begin

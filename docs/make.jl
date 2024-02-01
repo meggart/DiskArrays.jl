@@ -1,4 +1,5 @@
 using Documenter, DiskArrays
+using DiskArrays.TestTypes
 
 makedocs(;
     modules=[DiskArrays],

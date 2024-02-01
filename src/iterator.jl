@@ -42,14 +42,14 @@ end
 ) where {T,I<:Tuple{A,B,C}} where {A,B,C}
     datacur::A, bi::B, bstate::C = i
     (chunkiter, innerinds) = bstate
-    cistateold = length(chunkiter)
+    cistateold = isdone(innerinds)
     biter = iterate(bi, bstate)
     if biter === nothing
         return nothing
     else
         innernow, bstatenew = biter
         (chunkiter, innerinds) = bstatenew
-        if length(chunkiter) !== cistateold
+        if cistateold
             curchunk = innerinds.itr.indices
             datacur = OffsetArray(a[curchunk...], innerinds.itr)
             return datacur[innernow]::T, (datacur, bi, bstatenew)::I

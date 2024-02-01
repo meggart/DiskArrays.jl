@@ -42,7 +42,7 @@ end
 ) where {T,I<:Tuple{A,B,C}} where {A,B,C}
     datacur::A, bi::B, bstate::C = i
     (chunkiter, innerinds) = bstate
-    cistateold = isdone(innerinds)
+    cistateold = isempty(innerinds)
     biter = iterate(bi, bstate)
     if biter === nothing
         return nothing

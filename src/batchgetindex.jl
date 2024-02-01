@@ -67,6 +67,91 @@ function batchgetindex(a, i::AbstractVector{Int})
     ci = CartesianIndices(size(a))
     return batchgetindex(a, ci[i])
 end
+
+# indexing with vector of integers from NCDatasets 0.12.17 (MIT)
+
+# computes the shape of the array of size `sz` after applying the indexes
+# size(a[indexes...]) == _shape_after_slice(size(a),indexes...)
+
+# the difficulty here is to make the size inferrable by the compiler
+@inline _shape_after_slice(sz,indexes...) = __sh(sz,(),1,indexes...)
+@inline __sh(sz,sh,n,i::Integer,indexes...) = __sh(sz,sh,               n+1,indexes...)
+@inline __sh(sz,sh,n,i::Colon,  indexes...) = __sh(sz,(sh...,sz[n]),    n+1,indexes...)
+@inline __sh(sz,sh,n,i,         indexes...) = __sh(sz,(sh...,length(i)),n+1,indexes...)
+@inline __sh(sz,sh,n) = sh
+
+
+# convert e.g. vector indices to a list of ranges
+# [1,2,3,6,7] into [1:3, 6:7]
+# 1:10 into [1:10]
+to_range_list(index::Integer,len) = index
+to_range_list(index::Colon,len) = [1:len]
+to_range_list(index::AbstractRange,len) = [index]
+
+function to_range_list(index::Vector{T},len) where T <: Integer
+    grow(istart) = istart[begin]:(istart[end]+step(istart))
+
+    baseindex = 1
+    indices_ranges = UnitRange{T}[]
+
+    while baseindex <= length(index)
+        range = index[baseindex]:index[baseindex]
+        range_test = grow(range)
+        index_view = @view index[baseindex:end]
+
+        while checkbounds(Bool,index_view,length(range_test)) &&
+            (range_test[end] == index_view[length(range_test)])
+
+            range = range_test
+            range_test = grow(range_test)
+        end
+
+        push!(indices_ranges,range)
+        baseindex += length(range)
+    end
+
+    # make sure we did not lose any indices
+    @assert reduce(vcat,indices_ranges,init=T[]) == index
+    return indices_ranges
+end
+
+_range_indices_dest(ri_dest) = ri_dest
+_range_indices_dest(ri_dest,i::Integer,rest...) = _range_indices_dest(ri_dest,rest...)
+function _range_indices_dest(ri_dest,v,rest...)
+    baseindex = 0
+    ind = similar(v,0)
+    for r in v
+        rr = 1:length(r)
+        push!(ind,baseindex .+ rr)
+        baseindex += length(r)
+    end
+
+    _range_indices_dest((ri_dest...,ind),rest...)
+end
+
+# rebase in source indices to the destination array
+# for example if we load range 1:3 and 7:10 we will write to ranges 1:3 and 4:7
+range_indices_dest(ri...) = _range_indices_dest((),ri...)
+
+function batchgetindex(a::TA,indices::Vararg{Union{Int,Colon,AbstractRange{<:Integer},Vector{Int}},N}) where TA <: AbstractArray{T,N} where {T,N}
+    sz_source = size(a)
+    ri = to_range_list.(indices,sz_source)
+    sz_dest = _shape_after_slice(sz_source,indices...)
+    ri_dest = range_indices_dest(ri...)
+
+    @debug "transform vector of indices to ranges" ri_dest ri
+
+    dest = Array{eltype(a),length(sz_dest)}(undef,sz_dest)
+    for R in CartesianIndices(length.(ri))
+        ind_source = ntuple(i -> ri[i][R[i]],N)
+        ind_dest = ntuple(i -> ri_dest[i][R[i]],length(ri_dest))
+        dest[ind_dest...] = a[ind_source...]
+    end
+    return dest
+end
+
+
+
 function batchgetindex(a, i...)
     indvec = create_indexvector(a, i)
     return disk_getindex_batch(a, indvec)
@@ -171,6 +256,8 @@ function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
         mi, ma = extrema(ids)
         return largest_jump > cs && length(ids) / (ma - mi) < 0.5
     end
+    # What TODO?: necessary to avoid infinite recursion
+    need_batch = false
     if any(need_batch)
         A_ret .= batchgetindex(A, r...)
     else

@@ -26,7 +26,7 @@ function Base.iterate(::BlockedIndices, i)
     if r === nothing
         ii = iterate(chunkiter)
         ii === nothing && return nothing
-        innerinds = Iterators.Stateful(CartesianIndices(first(ii)))
+        Iterators.reset!(innerinds, CartesianIndices(first(ii)))
         r = iterate(innerinds)
         r === nothing && return nothing
         return first(r), (chunkiter, innerinds)

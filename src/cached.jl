@@ -32,6 +32,27 @@ readblock!(A::CachedDiskArray, data, I::AbstractVector...) = _readblock_cached(A
 haschunks(A::CachedDiskArray) = haschunks(parent(A))
 eachchunk(A::CachedDiskArray) = eachchunk(parent(A))
 
+function readblock!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
+    chunks = eachchunk(A)
+    chunk_inds = findchunk.(chunks.chunks, I)
+
+    chunk_arrays = map(chunks[chunk_inds...]) do c
+        if haskey(A.cache, c)
+            A.cache[c]
+        else
+            chunk_data = Array{T,N}(undef, length.(I))
+            A.cache[c] = readblock!(A, chunk_data, I...)
+        end
+    end
+
+    out_chunks = ConcatDiskArray(chunk_arrays)
+    out_inds = map(i -> i .- first(i) + 1, I)
+
+    data .= view(out_chunks, out_inds...)
+
+    return data
+end
+
 function _readblock_cached(A, data, I...)
     if haskey(A.cache, I)
         data .= A.cache[I]

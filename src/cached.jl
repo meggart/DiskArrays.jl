@@ -41,8 +41,8 @@ function _readblock_cached!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
         if haskey(A.cache, c)
             A.cache[c]
         else
-            chunk_data = Array{T,N}(undef, length.(I)...)
-            A.cache[c] = readblock!(parent(A), chunk_data, I...)
+            chunk_data = Array{T,N}(undef, length.(c)...)
+            A.cache[c] = readblock!(parent(A), chunk_data, c...)
         end
     end
     out = ConcatDiskArray(chunk_arrays)

@@ -720,6 +720,11 @@ end
 
     ca = DiskArrays.cache(ch; maxsize=5)
     @test sum(ca) == sum(ca)
-    # Read from the cache
-    @test ca[:, :] == ch
+
+    @test ca[:, :] == ch[:, :]
+    @test ca[:, 1] == ch[:, 1]
+    @test ca[:, 2] == ch[:, 2]
+    @test ca[:, 3] == ch[:, 3]
+    @test ca[:, 200] == ch[:, 200]
+    @test ca[200, :] == ch[200, :]
 end

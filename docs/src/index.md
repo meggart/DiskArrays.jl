@@ -5,5 +5,5 @@ CurrentModule = DiskArrays
 # DiskArrays
 
 ```@autodocs
-Modules = [DiskArrays]
+Modules = [DiskArrays, DiskArrays.TestTypes]
 ```

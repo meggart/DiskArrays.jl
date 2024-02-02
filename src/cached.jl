@@ -42,7 +42,12 @@ function _readblock_cached(A, data, I...)
     return data
 end
 
-function cached(A::AbstractArray)
-    isdiskarray(A) || throw(ArgumentError("Array `$(typeof(A))` is not a disk array"))
-    CachedDiskArray(A)
-end
+"""
+    cache(A::AbstractArray; maxsize=1000)
+
+Wrap internal disk arrays with `CacheDiskArray`.
+
+This function is intended to be extended by package that want to
+re-wrap the disk array afterwards, such as YAXArrays.jl or Rasters.jl.
+"""
+cache(A::AbstractArray; maxsize=1000) = CachedDiskArray(A; maxsize)

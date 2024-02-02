@@ -709,8 +709,8 @@ end
 end
 
 @testset "Cached arrays" begin
-    A = (1:3000) * (1:1200)'
-    ch = ChunkedDiskArray((1:3000) * (1:1200)', (20, 5))
+    A = (1:300) * (1:1200)'
+    ch = ChunkedDiskArray((1:3000) * (1:1200)', (128, 128))
     ca = DiskArrays.CachedDiskArray(ch; maxsize=5)
     # Read the original
     @test sum(ca) == sum(ca)

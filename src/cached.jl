@@ -24,15 +24,15 @@ end
 Base.parent(A::CachedDiskArray) = A.parent
 Base.size(A::CachedDiskArray) = size(parent(A))
 # These could be more efficient with memory in some cases, but this is simple
-readblock!(A::CachedDiskArray, data, I...) = _readblock_cached(A, data, I...)
-readblock!(A::CachedDiskArray, data, I::AbstractVector...) = _readblock_cached(A, data, I...)
+readblock!(A::CachedDiskArray, data, I...) = _readblock_cached!(A, data, I...)
+readblock!(A::CachedDiskArray, data, I::AbstractVector...) = _readblock_cached!(A, data, I...)
 # TODO we need to invalidate caches when we write
 # writeblock!(A::CachedDiskArray, data, I...) = writeblock!(parent(A), data, I...)
 
 haschunks(A::CachedDiskArray) = haschunks(parent(A))
 eachchunk(A::CachedDiskArray) = eachchunk(parent(A))
 
-function readblock!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
+function _readblock_cached!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
     chunks = eachchunk(A)
     chunk_inds = findchunk.(chunks.chunks, I)
 
@@ -40,26 +40,16 @@ function readblock!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
         if haskey(A.cache, c)
             A.cache[c]
         else
-            chunk_data = Array{T,N}(undef, length.(I))
-            A.cache[c] = readblock!(A, chunk_data, I...)
+            chunk_data = Array{T,N}(undef, length.(I)...)
+            A.cache[c] = readblock!(parent(A), chunk_data, I...)
         end
     end
+    out = ConcatDiskArray(chunk_arrays)
 
-    out_chunks = ConcatDiskArray(chunk_arrays)
-    out_inds = map(i -> i .- first(i) + 1, I)
+    out_inds = map(i -> i .- first(i) .+ 1, I)
 
-    data .= view(out_chunks, out_inds...)
+    data .= view(out, out_inds...)
 
-    return data
-end
-
-function _readblock_cached(A, data, I...)
-    if haskey(A.cache, I)
-        data .= A.cache[I]
-    else
-        readblock!(parent(A), data, I...) 
-        A.cache[I] = copy(data)
-    end
     return data
 end
 

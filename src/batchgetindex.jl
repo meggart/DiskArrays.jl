@@ -1,29 +1,35 @@
-
-
-function has_chunk_gap(cs,ids)
+function has_chunk_gap(cs,ids::AbstractVector{<:Integer})
     #Find largest jump in indices
     largest_jump = foldl(ids,init=(0,first(ids))) do (largest,last),next
         largest = max(largest,next-last)
         (largest,next)
     end |> first
-    largest_jump > cs
+    largest_jump > first(cs)
 end
+#Return true for all multidimensional indices for now, could be optimised in the future
+has_chunk_gap(cs,ids) = true
+
+#Compute the number of possible indices in the hyperrectangle
+span(v::AbstractVector{<:Integer}) = 1 -(-(extrema(v)...))
+function span(v::AbstractVector{CartesianIndex{N}}) where N
+    minind,maxind = extrema(v)
+    prod((maxind-mindind+oneunit(minind)).I)
+end
+function span(v::AbstractArray{Bool})
+    mindind,maxind = extrema(view(CartesianIndices(size(v)),v))
+    prod((maxind-mindind+oneunit(minind)).I)
+end
+#The number of indices to actually be read
+numind(v::AbstractArray{Bool}) = sum(v)
+numind(v::Union{AbstractVector{<:Integer},AbstractVector{<:CartesianIndex}})=length(v)
+
 function is_sparse_index(ids; density_threshold = 0.5)
-    minid, maxid = extrema(ids)
-    indexdensity = (length(ids) / (maxid - minid))
+    indexdensity = numind(ids) / span(ids)
     return indexdensity < density_threshold
 end
 
-function need_batch(a,inds) 
-    allow_multi = allow_multi_chunk_access(a)
-    cs = approx_chunksize(eachchunk(a))
-    map(cs,inds) do c, i
-        (allow_multi || has_chunk_gap(c,i)) && is_sparse_index(i)
-    end |> any
-end
-
 # Define fallbacks for reading and writing sparse data
-function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
+#= function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     if need_batch(A,r)
         # Fall back to batchgetindex to do the readblock
         A_ret .= batchgetindex(A, r...)
@@ -57,7 +63,7 @@ function _writeblock!(A::AbstractArray, A_ret, r::AbstractVector...)
         writeblock!(A, A_temp, map(:, mi, ma)...)
     end
     return nothing
-end
+end =#
 
 macro implement_batchgetindex(t)
     t = esc(t)

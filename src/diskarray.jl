@@ -41,7 +41,8 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `data_indices` indices for reading from data array
 """
 Base.@assume_effects :foldable resolve_indices(a, i, batch_strategy = NoBatch()) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
-#Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}},batch_strategy = NoBatch()) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
+Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}},batch_strategy::NoBatch) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
+Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}},batch_strategy::ChunkRead) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
 Base.@assume_effects :foldable need_batch(a,i) = _need_batch(eachchunk(a).chunks,i,allow_multi_chunk_access(a))
 function _need_batch(cs, i, am)
     nb, csrem = need_batch_index(first(i),cs,am)
@@ -149,11 +150,6 @@ splitcs(si,csnow,csrem) = splitcs(Base.tail(si),(csnow...,first(csrem)),Base.tai
 splitcs(::Tuple{},csnow,csrem) = (csnow,csrem)
 
 
-viewifnecessary(a,::Tuple{Vararg{Colon}}) = a
-viewifnecessary(a,i) = view(a,i...)
-maybe_unwrap(a,_) = a
-maybe_unwrap(a,::Tuple{Vararg{<:Integer}}) = a[1]
-
 
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     checkscalar(i)
@@ -180,9 +176,10 @@ function getindex_disk!(out, a, i...)
         mtemparray_indices = MRArray(temparray_indices)
         mdata_indicess = MRArray(data_indices)
         outputarray = create_outputarray(out,a,output_size)
-        temparray = Array{eltype(a)}(undef, temparray_size...)  
+        temparray = Array{eltype(a)}(undef, temparray_size...) 
         for (output_indices, temparray_indices, data_indices) in zip(moutput_indices,mtemparray_indices,mdata_indicess)
-            readblock!(a, temparray, data_indices...)
+            vtemparray = maybeshrink(temparray,a,data_indices)
+            readblock!(a, vtemparray, data_indices...)
             transfer_results!(outputarray, temparray, output_indices, temparray_indices)
         end
     else
@@ -218,12 +215,33 @@ function setindex_disk!(a::AbstractArray{T}, v::T, i...) where {T<:AbstractArray
     return setindex_disk!(a, [v], i...)
 end
 
+function maybeshrink(temparray, a, indices)
+    if all(size(a) .== length.(indices))
+        temparray
+    else
+        view(temparray,map(i->1:length(i),indices)...)
+    end
+end
+
 function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
-    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i)
-    @debug output_size, temparray_size, output_indices, temparray_indices, data_indices
-    temparray = Array{eltype(a)}(undef, temparray_size...)
-    transfer_results_write!(v, temparray, output_indices, temparray_indices)
-    writeblock!(a,temparray,data_indices...)
+    if need_batch(a,i)
+        batch_strategy = get_batchstrategy(a)
+        output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i,batch_strategy)
+        moutput_indices = MRArray(output_indices)
+        mtemparray_indices = MRArray(temparray_indices)
+        mdata_indicess = MRArray(data_indices)
+        temparray = Array{eltype(a)}(undef, temparray_size...) 
+        for (output_indices, temparray_indices, data_indices) in zip(moutput_indices,mtemparray_indices,mdata_indicess)
+            transfer_results_write!(v, temparray, output_indices, temparray_indices)
+            vtemparray = maybeshrink(temparray,a,data_indices)
+            writeblock!(a,vtemparray,data_indices...)
+        end
+    else
+        output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a,i)
+        temparray = Array{eltype(a)}(undef, temparray_size...)
+        transfer_results_write!(v, temparray, output_indices, temparray_indices)
+        writeblock!(a,temparray,data_indices...)
+    end
 end
 
 

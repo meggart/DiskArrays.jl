@@ -21,7 +21,7 @@ struct MRArray{T,N,A} <: AbstractArray{T,N}
     a::A
 end
 tuple_type_length(::Type{<:NTuple{N}}) where N = N
-function MRArray(a::NTuple{N,DiskArrays.MultiRead}) where N 
+function MRArray(a::NTuple{N,MultiRead}) where N 
     allvecs = getproperty.(a,:indexlist)
     # M = sum(tuple_type_length,eltype.(allvecs))
     MRArray{Any,N,typeof(allvecs)}(allvecs)
@@ -81,17 +81,43 @@ function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
         a = get!(()->Pair{Int,Int}[],chunksdict,cI)
         push!(a,(dataindex=>outindex))
     end
-    tempsize = maximum(length,values(chunksdict))
-    tempinds,datainds,outinds = Tuple{UnitRange{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    tempinds,datainds,outinds = Tuple{Vector{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{Int}}[]
     for (cI,a) in chunksdict
-        chunkrange = csnow[cI]
         dataind = extrema(first,a)
-        tempind = dataind .- first(chunkrange) .+ 1
+        tempind = first.(a) .- first(dataind) .+ 1
         push!(outinds, (map(last,a),))
-        push!(datainds, (range(dataind...),))
-        push!(tempinds, (range(tempind...),))
+        push!(datainds, (first(dataind):last(dataind),))
+        push!(tempinds, (tempind,))
     end
+    tempsize = maximum(length,tempinds)
     (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+end
+
+function process_index(i::AbstractArray{Bool,N}, cs, ::ChunkRead) where N
+    process_index(findall(i),cs,ChunkRead())
+end
+function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) where N
+    csnow, csrem = splitcs(i,cs)
+    chunksdict = Dict{CartesianIndex{N},Vector{Pair{CartesianIndex{N},Int}}}()
+    # Look for affected chunks
+    for (outindex,dataindex) in enumerate(i)
+        cI = CartesianIndex(findchunk.(csnow,dataindex.I))
+        a = get!(()->Pair{CartesianIndex{N},Int}[],chunksdict,cI)
+        push!(a,(dataindex=>outindex))
+    end
+    tempinds,datainds,outinds = Tuple{Vector{CartesianIndex{N}}}[], NTuple{N,UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    tempsize = map(_->0,csnow)
+    for (cI,a) in chunksdict
+        datamin,datamax = extrema(first,a)
+        aa = first.(a)
+        tempind = aa .- datamin .+ oneunit(CartesianIndex{N})
+        push!(outinds, tuple(map(last,a)))
+        push!(datainds, range.(datamin.I,datamax.I))
+        push!(tempinds, tuple(tempind))
+        s = datamax.I .- datamin.I .+ 1
+        tempsize = max.(s,tempsize)
+    end
+    (length(i),), tempsize, (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), csrem
 end
 # Define fallbacks for reading and writing sparse data
 #= function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)

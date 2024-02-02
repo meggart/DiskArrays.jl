@@ -331,4 +331,3 @@ function estimate_chunksize(s, si)
     return GridChunks(s, cs)
 end
 
-include("batchgetindex.jl")

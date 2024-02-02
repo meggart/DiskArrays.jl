@@ -1,3 +1,42 @@
+#Define types for different strategies of reading sparse data
+
+#Read bounding box and extract appropriate values
+struct NoBatch end
+
+#Split contiguous streaks into ranges and read the separately
+struct SubRanges
+    allowed_misses::Int
+end
+
+#Split dataset according to chunk and read chunk by chunk
+struct ChunkRead end
+
+get_batchstrategy(a) = ChunkRead()
+
+struct MultiRead{I}
+    indexlist::I
+end
+
+struct MRArray{T,N,A} <: AbstractArray{T,N}
+    a::A
+end
+tuple_type_length(::Type{<:NTuple{N}}) where N = N
+function MRArray(a::NTuple{N,DiskArrays.MultiRead}) where N 
+    allvecs = getproperty.(a,:indexlist)
+    # M = sum(tuple_type_length,eltype.(allvecs))
+    MRArray{Any,N,typeof(allvecs)}(allvecs)
+end
+mapflatten(f,x) = foldl((x,y)->(x...,f(y)),x, init=())
+Base.size(a::MRArray) = mapflatten(length,a.a)
+Base.IndexStyle(::Type{<:MRArray}) = IndexCartesian()
+function merge_indices(ret,a,i) 
+    merge_indices((ret...,first(a)[first(i)]...),Base.tail(a),Base.tail(i))
+end
+merge_indices(ret,::Tuple{},::Tuple{}) = ret
+function Base.getindex(a::MRArray{<:Any,N},I::Vararg{Int, N}) where N
+    merge_indices((),a.a,I)
+end
+
 function has_chunk_gap(cs,ids::AbstractVector{<:Integer})
     #Find largest jump in indices
     largest_jump = foldl(ids,init=(0,first(ids))) do (largest,last),next
@@ -13,11 +52,11 @@ has_chunk_gap(cs,ids) = true
 span(v::AbstractVector{<:Integer}) = 1 -(-(extrema(v)...))
 function span(v::AbstractVector{CartesianIndex{N}}) where N
     minind,maxind = extrema(v)
-    prod((maxind-mindind+oneunit(minind)).I)
+    prod((maxind-minind+oneunit(minind)).I)
 end
 function span(v::AbstractArray{Bool})
-    mindind,maxind = extrema(view(CartesianIndices(size(v)),v))
-    prod((maxind-mindind+oneunit(minind)).I)
+    minind,maxind = extrema(view(CartesianIndices(size(v)),v))
+    prod((maxind-minind+oneunit(minind)).I)
 end
 #The number of indices to actually be read
 numind(v::AbstractArray{Bool}) = sum(v)
@@ -28,6 +67,32 @@ function is_sparse_index(ids; density_threshold = 0.5)
     return indexdensity < density_threshold
 end
 
+function process_index(i, cs, ::ChunkRead)
+    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch())
+    outsize, tempsize, (MultiRead([outinds]),), (MultiRead([tempinds]),), (MultiRead([datainds]),), cs
+end
+
+function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
+    csnow = first(cs)
+    chunksdict = Dict{Int,Vector{Pair{Int,Int}}}()
+    # Look for affected chunks
+    for (outindex,dataindex) in enumerate(i)
+        cI = findchunk(csnow,dataindex)
+        a = get!(()->Pair{Int,Int}[],chunksdict,cI)
+        push!(a,(dataindex=>outindex))
+    end
+    tempsize = maximum(length,values(chunksdict))
+    tempinds,datainds,outinds = Tuple{UnitRange{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    for (cI,a) in chunksdict
+        chunkrange = csnow[cI]
+        dataind = extrema(first,a)
+        tempind = dataind .- first(chunkrange) .+ 1
+        push!(outinds, (map(last,a),))
+        push!(datainds, (range(dataind...),))
+        push!(tempinds, (range(tempind...),))
+    end
+    (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+end
 # Define fallbacks for reading and writing sparse data
 #= function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     if need_batch(A,r)

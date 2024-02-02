@@ -437,7 +437,7 @@ end
     #Index with range stride much larger than chunk size
     a = _DiskArray(reshape(1:100, 20, 5, 1); chunksize=(1, 5, 1))
     @test a[1:9:20, :, 1] == trueparent(a)[1:9:20, :, 1]
-    @test_broken getindex_count(a) == 3
+    @test getindex_count(a) == 3
 
     b = _DiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1))
     b[[1, 4], [2, 5], 1] = ones(2, 2)

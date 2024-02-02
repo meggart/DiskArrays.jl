@@ -1,5 +1,7 @@
 module DiskArrays
 
+using LRUCache: LRUCache, LRU
+
 # Use the README as the module docs
 @doc let
     path = joinpath(dirname(@__DIR__), "README.md")
@@ -23,6 +25,7 @@ include("cat.jl")
 include("generator.jl")
 include("zip.jl")
 include("show.jl")
+include("cached.jl")
 
 # The all-in-one macro
 

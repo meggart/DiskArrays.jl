@@ -722,5 +722,4 @@ end
     @test sum(ca) == sum(ca)
     # Read from the cache
     @test ca[:, :] == ch
-    length(ca.cache)
 end

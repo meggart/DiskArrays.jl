@@ -35,8 +35,9 @@ eachchunk(A::CachedDiskArray) = eachchunk(parent(A))
 function _readblock_cached!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
     chunks = eachchunk(A)
     chunk_inds = findchunk.(chunks.chunks, I)
+    needed_chunks = chunks[chunk_inds...]
 
-    chunk_arrays = map(chunks[chunk_inds...]) do c
+    chunk_arrays = map(needed_chunks) do c
         if haskey(A.cache, c)
             A.cache[c]
         else
@@ -46,7 +47,9 @@ function _readblock_cached!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
     end
     out = ConcatDiskArray(chunk_arrays)
 
-    out_inds = map(i -> i .- first(i) .+ 1, I)
+    out_inds = map(I, first(needed_chunks)) do i, nc
+        i .- first(nc) .+ 1 
+    end
 
     data .= view(out, out_inds...)
 

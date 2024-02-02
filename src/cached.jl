@@ -3,6 +3,15 @@
 # This is useful in `zip` and other operations that can iterate
 # over multiple arrays with different patterns.
 
+"""
+    CachedDiskArray <: AbstractDiskArray
+
+    CachedDiskArray(A::AbstractArray; maxsize=1000)
+
+Wrap some disk array `A` with a caching mechanism that will 
+keep chunks up to a total of `maxsize` megabytes, dropping
+the least used chunks when `maxsize` is exceeded.
+"""
 struct CachedDiskArray{T,N,A<:AbstractArray{T,N},C} <: AbstractDiskArray{T,N}
     parent::A
     cache::C

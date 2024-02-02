@@ -707,3 +707,14 @@ end
     @test size(c1) == (5,5)
     @test setindex_count(c1) == 1
 end
+
+@testset "Cached arrays" begin
+    A = (1:3000) * (1:1200)'
+    ch = ChunkedDiskArray((1:3000) * (1:1200)', (20, 5))
+    ca = DiskArrays.CachedDiskArray(ch; maxsize=5)
+    # Read the original
+    @test sum(ca) == sum(ca)
+    # Read from the cache
+    @test ca[:, :] == ch
+    length(ca.cache)
+end

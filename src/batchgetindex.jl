@@ -1,17 +1,25 @@
 #Define types for different strategies of reading sparse data
 
 #Read bounding box and extract appropriate values
-struct NoBatch end
+struct NoBatch{S<:Bool} 
+    allow_steprange::Val{S}
+end
 
 #Split contiguous streaks into ranges and read the separately
-struct SubRanges
-    allowed_misses::Int
+struct SubRanges{S}
+    allow_steprange::Val{S}
 end
 
 #Split dataset according to chunk and read chunk by chunk
-struct ChunkRead end
+struct ChunkRead{S} 
+    allow_steprange::Val{S}
+end
 
-get_batchstrategy(a) = ChunkRead()
+get_batchstrategy(_) = ChunkRead(Val(false))
+allow_steprange(::NoBatch{S}) where S = S
+allow_steprange(a::SubRanges{S}) where S = S
+allow_steprange(a::ChunkRead{S}) where S = S
+
 
 struct MultiRead{I}
     indexlist::I
@@ -90,6 +98,53 @@ function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
         push!(tempinds, (tempind,))
     end
     tempsize = maximum(length,tempinds)
+    (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+end
+
+function find_subranges_sorted(inds,allow_steprange=false)
+    t = allow_steprange ? Union{UnitRange{Int},StepRange{}} : UnitRange{Int}
+    rangelist = t[]
+    outputinds = UnitRange{Int}[]
+    current_step = 0
+    current_base = 1
+    for iind in 1:length(inds)-1
+        next_step = inds[iind+1] - inds[iind]
+        if (next_step == current_step) || (next_step == 0)
+            nothing
+        else
+            if !allow_steprange && next_step != 1
+                #Need to close the range
+                push!(rangelist,inds[current_base]:inds[iind])
+                push!(outputinds,current_base:iind)
+                current_base = iind + 1
+                current_step = 0
+                continue
+            end
+            if current_step === 0
+                # Just set the step (hanst been set before)
+                current_step = inds[iind+1] - inds[iind]
+            else
+                #Need to close the range
+                push!(rangelist,inds[current_base]:inds[iind])
+                push!(outputinds,current_base:iind)
+                current_base = iind + 1
+                current_step = 0
+                continue
+            end
+        end
+    end
+    push!(rangelist,inds[current_base]:last(inds))
+    push!(outputinds,current_base:length(inds))
+    rangelist, outputinds
+end
+
+##Implement NCDatasets behavior of splitting list of indices into ranges
+function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
+    if issorted(i)
+        rangelist, offsetlist = find_subranges_sorted(i,allow_steprange(s))
+        datainds = MultiRead(rangelist)
+        outinds = view.(Ref(i),)
+    end
     (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
 end
 

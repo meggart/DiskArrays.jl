@@ -715,3 +715,17 @@ end
     @test ca[:, 200, 1] == ch[:, 200, 1]
     @test ca[200, :, 1] == ch[200, :, 1]
 end
+
+@testset "Range subset identification" begin
+    inds = [1,2,2,3,5,6,7,10,10]
+    readranges, offsets = find_subranges_sorted(inds,false)
+    @test readranges == [1:3,5:7,10:10]
+    @test offsets    == [1:4,5:7,8:9]
+    inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
+    readranges, offsets = find_subranges_sorted(inds,false)
+    @test readranges == [1:1, 3:3, 5:7, 10:10, 13:13, 16:16, 19:20]
+    @test offsets == [1:3, 4:4, 5:8, 9:9, 10:10, 11:12, 13:14]
+    readranges, offsets = find_subranges_sorted(inds,true)
+    @test readranges == [1:5, 6:7, 10:19, 20:20]
+    @test offsets == [1:5, 6:8, 9:13, 14:14]
+end

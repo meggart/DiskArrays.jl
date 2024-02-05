@@ -69,7 +69,5 @@ end
 #And we define the test types
 include("util/testtypes.jl")
 
-#And we define the test types
-include("util/testtypes.jl")
 
 end # module

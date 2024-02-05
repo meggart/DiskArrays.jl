@@ -1,5 +1,7 @@
 module DiskArrays
 
+using LRUCache: LRUCache, LRU
+
 # Use the README as the module docs
 @doc let
     path = joinpath(dirname(@__DIR__), "README.md")
@@ -23,6 +25,8 @@ include("rechunk.jl")
 include("cat.jl")
 include("generator.jl")
 include("zip.jl")
+include("show.jl")
+include("cached.jl")
 
 # The all-in-one macro
 
@@ -42,6 +46,7 @@ macro implement_diskarray(t)
         @implement_batchgetindex $t
         @implement_cat $t
         @implement_zip $t
+        @implement_show $t
         @implement_generator $t
     end
 end
@@ -59,6 +64,10 @@ end
 @implement_batchgetindex AbstractDiskArray
 @implement_cat AbstractDiskArray
 @implement_generator AbstractDiskArray
+@implement_show AbstractDiskArray
+
+#And we define the test types
+include("util/testtypes.jl")
 
 #And we define the test types
 include("util/testtypes.jl")

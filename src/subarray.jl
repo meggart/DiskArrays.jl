@@ -1,5 +1,5 @@
-struct SubDiskArray{T,N} <: AbstractDiskArray{T,N}
-    v::SubArray{T,N}
+struct SubDiskArray{T,N,P,I,L} <: AbstractDiskArray{T,N}
+    v::SubArray{T,N,P,I,L}
 end
 
 # Base methods

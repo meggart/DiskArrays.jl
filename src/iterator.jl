@@ -26,7 +26,7 @@ function Base.iterate(::BlockedIndices, i)
     if r === nothing
         ii = iterate(chunkiter)
         ii === nothing && return nothing
-        innerinds = Iterators.Stateful(CartesianIndices(first(ii)))
+        Iterators.reset!(innerinds, CartesianIndices(first(ii)))
         r = iterate(innerinds)
         r === nothing && return nothing
         return first(r), (chunkiter, innerinds)
@@ -42,14 +42,14 @@ end
 ) where {T,I<:Tuple{A,B,C}} where {A,B,C}
     datacur::A, bi::B, bstate::C = i
     (chunkiter, innerinds) = bstate
-    cistateold = length(chunkiter)
+    cistateold = isempty(innerinds)
     biter = iterate(bi, bstate)
     if biter === nothing
         return nothing
     else
         innernow, bstatenew = biter
         (chunkiter, innerinds) = bstatenew
-        if length(chunkiter) !== cistateold
+        if cistateold
             curchunk = innerinds.itr.indices
             datacur = OffsetArray(a[curchunk...], innerinds.itr)
             return datacur[innernow]::T, (datacur, bi, bstatenew)::I

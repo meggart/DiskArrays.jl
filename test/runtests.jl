@@ -88,6 +88,7 @@ end
 function test_view(a)
     v = view(a, 2:3, 2:4, 1)
 
+    @test @inferred(size(v)) == (2,3)
     v[1:2, 1] = [1, 2]
     v[1:2, 2:3] = [4 4; 4 4]
     @test v[1:2, 1] == [1, 2]
@@ -112,19 +113,19 @@ function test_reductions(af)
         @test isapprox(f(a), f(data))
         @test getindex_count(a) <= 10
         # And test reduction along dimensions
-        a = _DiskArray(data; chunksize=(5, 4, 2))
+        a = AccessCountDiskArray(data; chunksize=(5, 4, 2))
         @test all(isapprox.(f(a; dims=2), f(data; dims=2)))
         # The minimum and maximum functions do some initialization, which will increase
         # the number of reads
         @test f in (minimum, maximum) || getindex_count(a) <= 12
-        a = _DiskArray(data; chunksize=(5, 4, 2))
+        a = AccessCountDiskArray(data; chunksize=(5, 4, 2))
         @test all(isapprox.(f(a; dims=(1, 3)), f(data; dims=(1, 3))))
         @test f in (minimum, maximum) || getindex_count(a) <= 12
     end
 end
 
 function test_broadcast(a_disk1)
-    a_disk2 = _DiskArray(rand(1:10, 1, 9); chunksize=(1, 3))
+    a_disk2 = AccessCountDiskArray(rand(1:10, 1, 9); chunksize=(1, 3))
     a_mem = reshape(1:2, 1, 1, 2)
 
     s = a_disk1 .+ a_disk2 .* Ref(2) ./ (2,)
@@ -152,7 +153,7 @@ function test_broadcast(a_disk1)
     @test getindex_count(a_disk1) == 6
     @test getindex_count(a_disk2) == 6
     # Now use another DiskArray as the output
-    aout = _DiskArray(zeros(10, 9, 2); chunksize=(5, 3, 2))
+    aout = AccessCountDiskArray(zeros(10, 9, 2); chunksize=(5, 3, 2))
     aout .= s ./ a_mem
     @test trueparent(aout) == (trueparent(a_disk1) .+ trueparent(a_disk2)) ./ a_mem
     @test setindex_count(aout) == 6
@@ -256,10 +257,20 @@ end
     @test subsetchunks(r2, [2:9; 11:18]) == RegularChunks(3, 1, 16)
 end
 
-@testset "Unchunked DiskArrays" begin
+@testset "ChunkedDiskArray" begin
+    a = ChunkedDiskArray(reshape(1:1000, (10, 20, 5)); chunksize=(2, 5, 1))
+    v = view(a, 1:2, 1, 1:3)
+    @test v == [1 201 401; 2 202 402]
+    @test DiskArrays.haschunks(a) == DiskArrays.Chunked()
+    @test size(DiskArrays.eachchunk(a)) == (5, 4, 5)
+end
+
+@testset "UnchunkedDiskArray" begin
     a = UnchunkedDiskArray(reshape(1:1000, (10, 20, 5)))
     v = view(a, 1:2, 1, 1:3)
     @test v == [1 201 401; 2 202 402]
+    @test DiskArrays.haschunks(a) == DiskArrays.Unchunked()
+    @test size(DiskArrays.eachchunk(a)) == (1, 1, 1)
 end
 
 @testset "Index strategy decisions" begin
@@ -270,17 +281,17 @@ end
 end
 
 @testset "AbstractDiskArray getindex" begin
-    a = _DiskArray(reshape(1:20, 4, 5, 1))
+    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1))
     test_getindex(a)
 end
 
 @testset "AbstractDiskArray setindex" begin
-    a = _DiskArray(zeros(Int, 4, 5, 1))
+    a = AccessCountDiskArray(zeros(Int, 4, 5, 1))
     test_setindex(a)
 end
 
 @testset "Zerodimensional" begin
-    a = _DiskArray(zeros(Int))
+    a = AccessCountDiskArray(zeros(Int))
     @test a[] == 0
     @test a[1] == 0
     a[] = 5
@@ -290,26 +301,26 @@ end
 end
 
 @testset "Views" begin
-    a = _DiskArray(zeros(Int, 4, 5, 1))
+    a = AccessCountDiskArray(zeros(Int, 4, 5, 1))
     test_view(a)
 end
 
 import Statistics: mean
 @testset "Reductions" begin
-    a = data -> _DiskArray(data; chunksize=(5, 4, 2))
+    a = data -> AccessCountDiskArray(data; chunksize=(5, 4, 2))
     test_reductions(a)
 end
 
 @testset "Broadcast" begin
-    a_disk1 = _DiskArray(rand(10, 9, 2); chunksize=(5, 3, 2))
+    a_disk1 = AccessCountDiskArray(rand(10, 9, 2); chunksize=(5, 3, 2))
     test_broadcast(a_disk1)
 end
 
 @testset "zip" begin
     a = rand(10, 9, 2)
     b = rand(10, 9, 2)
-    da = _DiskArray(a; chunksize=(5, 3, 2))
-    db = _DiskArray(b; chunksize=(2, 3, 1))
+    da = AccessCountDiskArray(a; chunksize=(5, 3, 2))
+    db = AccessCountDiskArray(b; chunksize=(2, 3, 1))
     z = zip(a, b)
     zd = zip(da, db)
     zdc = collect(zd)
@@ -334,7 +345,7 @@ end
 end
 
 @testset "cat" begin
-    da = _DiskArray(collect(reshape(1:24, 4, 6, 1)))
+    da = AccessCountDiskArray(collect(reshape(1:24, 4, 6, 1)))
     a = view(da, :, 1:3, :)
     b = view(da, :, 4:6, :)
     ca = cat(a, b; dims=2)
@@ -376,9 +387,9 @@ end
     end
 
     @testset "cat mixed chunk size" begin
-        a = _DiskArray(collect(1:10); chunksize=(3,))
-        b = _DiskArray(collect(1:9); chunksize=(4,))
-        c = _DiskArray(collect(1:7); chunksize=(3,))
+        a = AccessCountDiskArray(collect(1:10); chunksize=(3,))
+        b = AccessCountDiskArray(collect(1:9); chunksize=(4,))
+        c = AccessCountDiskArray(collect(1:7); chunksize=(3,))
         d = cat(a, b, c; dims=1)
         @test d == [1:10; 1:9; 1:7]
         @test DiskArrays.eachchunk(d) == [
@@ -400,19 +411,31 @@ end
 end
 
 @testset "Broadcast with length 1 and 0 final dim" begin
-    a_disk1 = _DiskArray(rand(10, 9, 1); chunksize=(5, 3, 1))
-    a_disk2 = _DiskArray(rand(1:10, 1, 9); chunksize=(1, 3))
+    a_disk1 = AccessCountDiskArray(rand(10, 9, 1); chunksize=(5, 3, 1))
+    a_disk2 = AccessCountDiskArray(rand(1:10, 1, 9); chunksize=(1, 3))
     s = a_disk1 .+ a_disk2
     @test DiskArrays.eachchunk(s) isa DiskArrays.GridChunks{3}
     @test size(collect(s)) == (10, 9, 1)
-    a_disk1 = _DiskArray(zeros(Int); chunksize=())
+    a_disk1 = AccessCountDiskArray(zeros(Int); chunksize=())
     r = ones(Int)
     r .= a_disk1
     @test r[] == 0
 end
 
+if VERSION >= v"1.7.0"
+    @testset "Broadcasted assignment with trailing singleton dimensions" begin
+        a1 = rand(10,9,1,1)
+        a_disk1 = AccessCountDiskArray(a1)
+        s = zeros(10,9)
+        @test begin
+            s .= a_disk1
+            s == a1[:,:,1,1]
+        end
+    end
+end
+
 @testset "Getindex/Setindex with vectors" begin
-    a = _DiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
+    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]
     @test_broken getindex_count(a) == 2
     coords = CartesianIndex.([(1, 1, 1), (3, 1, 1), (2, 4, 1), (4, 4, 1)])
@@ -435,11 +458,11 @@ end
     @test aperm[coordsperm, :] == a[coords, :]
 
     #Index with range stride much larger than chunk size
-    a = _DiskArray(reshape(1:100, 20, 5, 1); chunksize=(1, 5, 1))
+    a = AccessCountDiskArray(reshape(1:100, 20, 5, 1); chunksize=(1, 5, 1))
     @test a[1:9:20, :, 1] == trueparent(a)[1:9:20, :, 1]
     @test getindex_count(a) == 3
 
-    b = _DiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1))
+    b = AccessCountDiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1))
     b[[1, 4], [2, 5], 1] = ones(2, 2)
     @test_broken setindex_count(b) == 2
     mask = falses(4, 5, 1)
@@ -452,7 +475,7 @@ end
 
     #Test for #131
     a = reshape(1:75,5,5,3)
-    a1 = _DiskArray(a);
+    a1 = AccessCountDiskArray(a);
     i = ([1,2],[2,3],:)
     r = a1[i...]
     @test size(r) == (2,2,3)
@@ -462,7 +485,7 @@ end
 
 @testset "generator" begin
     a = collect(reshape(1:90, 10, 9))
-    a_disk = _DiskArray(a; chunksize=(5, 3))
+    a_disk = AccessCountDiskArray(a; chunksize=(5, 3))
     @test [aa for aa in a_disk] == a
     #The array has 6 chunks so getindex_count should be 6
     @test getindex_count(a_disk) == 6
@@ -480,7 +503,7 @@ end
 
 @testset "Array methods" begin
     a = collect(reshape(1:90, 10, 9))
-    a_disk = _DiskArray(a; chunksize=(5, 3))
+    a_disk = AccessCountDiskArray(a; chunksize=(5, 3))
     ei = eachindex(a_disk)
     @test ei isa DiskArrays.BlockedIndices
     @test length(ei) == 90
@@ -517,18 +540,18 @@ end
 end
 
 @testset "Reshape" begin
-    a = reshape(_DiskArray(reshape(1:20, 4, 5)), 4, 5, 1)
+    a = reshape(AccessCountDiskArray(reshape(1:20, 4, 5)), 4, 5, 1)
     test_getindex(a)
-    a = reshape(_DiskArray(zeros(Int, 4, 5)), 4, 5, 1)
+    a = reshape(AccessCountDiskArray(zeros(Int, 4, 5)), 4, 5, 1)
     test_setindex(a)
-    a = reshape(_DiskArray(zeros(Int, 4, 5)), 4, 5, 1)
+    a = reshape(AccessCountDiskArray(zeros(Int, 4, 5)), 4, 5, 1)
     test_view(a)
-    a = data -> reshape(_DiskArray(data; chunksize=(5, 4, 2)), 10, 20, 2, 1)
+    a = data -> reshape(AccessCountDiskArray(data; chunksize=(5, 4, 2)), 10, 20, 2, 1)
     test_reductions(a)
-    a = reshape(_DiskArray(reshape(1:20, 4, 5)), 4, 5, 1)
+    a = reshape(AccessCountDiskArray(reshape(1:20, 4, 5)), 4, 5, 1)
     @test ReshapedDiskArray(a.parent, a.keepdim, a.newsize) === a
     # Reshape with existing trailing 1s works
-    a = reshape(_DiskArray(reshape(1:100, 5, 5, 2, 2, 1, 1)), 5, 5, 2, 2, 1, 1, 1)
+    a = reshape(AccessCountDiskArray(reshape(1:100, 5, 5, 2, 2, 1, 1)), 5, 5, 2, 2, 1, 1, 1)
     @test a[5, 5, 2, 2, 1, 1, 1] == 100
 end
 
@@ -536,15 +559,15 @@ import Base.PermutedDimsArrays.invperm
 @testset "Permutedims" begin
     p = (3, 1, 2)
     ip = invperm(p)
-    a = permutedims(_DiskArray(permutedims(reshape(1:20, 4, 5, 1), ip)), p)
+    a = permutedims(AccessCountDiskArray(permutedims(reshape(1:20, 4, 5, 1), ip)), p)
     test_getindex(a)
-    a = permutedims(_DiskArray(zeros(Int, 5, 1, 4)), p)
+    a = permutedims(AccessCountDiskArray(zeros(Int, 5, 1, 4)), p)
     test_setindex(a)
-    a = permutedims(_DiskArray(zeros(Int, 5, 1, 4)), p)
+    a = permutedims(AccessCountDiskArray(zeros(Int, 5, 1, 4)), p)
     test_view(a)
-    a = data -> permutedims(_DiskArray(permutedims(data, ip); chunksize=(4, 2, 5)), p)
+    a = data -> permutedims(AccessCountDiskArray(permutedims(data, ip); chunksize=(4, 2, 5)), p)
     test_reductions(a)
-    a_disk1 = permutedims(_DiskArray(rand(9, 2, 10); chunksize=(3, 2, 5)), p)
+    a_disk1 = permutedims(AccessCountDiskArray(rand(9, 2, 10); chunksize=(3, 2, 5)), p)
     test_broadcast(a_disk1)
     @test PermutedDiskArray(a_disk1.a) === a_disk1
 end
@@ -579,12 +602,12 @@ end
 end
 
 @testset "Mixed size chunks" begin
-    a1 = _DiskArray(zeros(24, 16); chunksize=(1, 1))
-    a2 = _DiskArray((2:25) * vec(1:16)'; chunksize=(1, 2))
-    a3 = _DiskArray((3:26) * vec(1:16)'; chunksize=(3, 4))
-    a4 = _DiskArray((4:27) * vec(1:16)'; chunksize=(6, 8))
-    v1 = view(_DiskArray((1:30) * vec(1:21)'; chunksize=(5, 7)), 3:26, 2:17)
-    v2 = view(_DiskArray((1:30) * vec(1:21)'; chunksize=(5, 7)), 4:27, 3:18)
+    a1 = AccessCountDiskArray(zeros(24, 16); chunksize=(1, 1))
+    a2 = AccessCountDiskArray((2:25) * vec(1:16)'; chunksize=(1, 2))
+    a3 = AccessCountDiskArray((3:26) * vec(1:16)'; chunksize=(3, 4))
+    a4 = AccessCountDiskArray((4:27) * vec(1:16)'; chunksize=(6, 8))
+    v1 = view(AccessCountDiskArray((1:30) * vec(1:21)'; chunksize=(5, 7)), 3:26, 2:17)
+    v2 = view(AccessCountDiskArray((1:30) * vec(1:21)'; chunksize=(5, 7)), 4:27, 3:18)
     a1 .= a2
     @test Array(a1) == Array(a2)
     a1 .= a3
@@ -654,7 +677,7 @@ end
     @test size(a) == (5,)
 
     b = ResizableArray(Vector{Int}(undef,0))
-    b1 = _DiskArray(b,chunksize=(5,))
+    b1 = AccessCountDiskArray(b,chunksize=(5,))
     @test size(b1) == (0,)
     b1[1:5] = 1:5
     @test b1 == 1:5
@@ -662,10 +685,33 @@ end
     @test setindex_count(b1) == 1
 
     c = ResizableArray(Matrix{Int}(undef,(0,0)))
-    c1 = _DiskArray(c,chunksize=(5,5))
+    c1 = AccessCountDiskArray(c,chunksize=(5,5))
     @test size(c1) == (0,0)
     c1[1:5,1:5] = ones(Int,5,5)
     @test c1 == ones(Int,5,5)
     @test size(c1) == (5,5)
     @test setindex_count(c1) == 1
+end
+
+@testset "Cached arrays" begin
+    M = (1:300) * (1:1200)'
+    A = cat(M, M, M, M; dims=3)
+    ch = ChunkedDiskArray(A, (128, 128, 2))
+    ca = DiskArrays.CachedDiskArray(ch; maxsize=5)
+    # Read the original
+    @test sum(ca) == sum(ca)
+    length(ca.cache)
+
+    ca = DiskArrays.cache(ch; maxsize=5)
+    @test sum(ca) == sum(ca)
+
+    @test ca[:, :, 1] == A[:, :, 1]
+    @test ca[:, :, 2] == A[:, :, 2]
+    @test ca[:, :, 2] == A[:, :, 3]
+    @test ca[:, :, 2] == A[:, :, 4]
+    @test ca[:, 1, 1] == ch[:, 1, 1]
+    @test ca[:, 2, 1] == ch[:, 2, 1]
+    @test ca[:, 3, 1] == ch[:, 3, 1]
+    @test ca[:, 200, 1] == ch[:, 200, 1]
+    @test ca[200, :, 1] == ch[200, :, 1]
 end

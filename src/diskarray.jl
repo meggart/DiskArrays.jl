@@ -40,21 +40,22 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `temp_indices` indices for reading from temp array
 - `data_indices` indices for reading from data array
 """
-Base.@assume_effects :foldable resolve_indices(a, i, batch_strategy = NoBatch()) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
+Base.@assume_effects :foldable resolve_indices(a, i, batch_strategy = NoBatch(Val(allow_steprange(a)))) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
 Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}},batch_strategy::NoBatch) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
 Base.@assume_effects :foldable resolve_indices(a::AbstractVector,i::Tuple{AbstractVector{<:Integer}},batch_strategy::ChunkRead) = _resolve_indices(eachchunk(a).chunks,i,(),(),(),(),(),batch_strategy)
-Base.@assume_effects :foldable need_batch(a,i) = _need_batch(eachchunk(a).chunks,i,allow_multi_chunk_access(a))
-function _need_batch(cs, i, am)
-    nb, csrem = need_batch_index(first(i),cs,am)
-    nb ? true : _need_batch(csrem,Base.tail(i),am)
+Base.@assume_effects :foldable need_batch(a,i) = _need_batch(eachchunk(a).chunks,i,allow_multi_chunk_access(a),density_threshold(a))
+function _need_batch(cs, i, am, dt)
+    nb, csrem = need_batch_index(first(i),cs,am,dt)
+    @show nb, csrem, am, dt
+    nb ? true : _need_batch(csrem,Base.tail(i),am,dt)
 end
-_need_batch(::Tuple{},::Tuple{},_) = false
-_need_batch(::Tuple{},_,_) = false
-_need_batch(_,::Tuple{},_) = false
-need_batch_index(::Union{Integer,UnitRange,Colon},cs,_) = false, Base.tail(cs)
-function need_batch_index(i, cs,allow_multi)
+_need_batch(::Tuple{},::Tuple{},_,_) = false
+_need_batch(::Tuple{},_,_,_) = false
+_need_batch(_,::Tuple{},_,_) = false
+need_batch_index(::Union{Integer,UnitRange,Colon},cs,_,_) = false, Base.tail(cs)
+function need_batch_index(i, cs,allow_multi,density_threshold)
     csnow,csrem = splitcs(i,cs)
-    nb = (allow_multi || has_chunk_gap(approx_chunksize.(csnow),i)) && is_sparse_index(i)
+    nb = (allow_multi || has_chunk_gap(approx_chunksize.(csnow),i)) && is_sparse_index(i;density_threshold)
     nb, csrem
 end
 function _resolve_indices(cs,i,output_size,temp_sizes,output_indices,temp_indices,data_indices,nb)
@@ -178,6 +179,9 @@ function getindex_disk!(out, a, i...)
         outputarray = create_outputarray(out,a,output_size)
         temparray = Array{eltype(a)}(undef, temparray_size...) 
         for (output_indices, temparray_indices, data_indices) in zip(moutput_indices,mtemparray_indices,mdata_indicess)
+            @show data_indices
+            @show output_indices
+            @show temparray_indices
             vtemparray = maybeshrink(temparray,a,data_indices)
             readblock!(a, vtemparray, data_indices...)
             transfer_results!(outputarray, temparray, output_indices, temparray_indices)

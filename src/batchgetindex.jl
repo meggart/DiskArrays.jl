@@ -1,7 +1,7 @@
 #Define types for different strategies of reading sparse data
 
 #Read bounding box and extract appropriate values
-struct NoBatch{S<:Bool} 
+struct NoBatch{S} 
     allow_steprange::Val{S}
 end
 
@@ -19,7 +19,8 @@ get_batchstrategy(_) = ChunkRead(Val(false))
 allow_steprange(::NoBatch{S}) where S = S
 allow_steprange(a::SubRanges{S}) where S = S
 allow_steprange(a::ChunkRead{S}) where S = S
-
+allow_steprange(a) = allow_steprange(get_batchstrategy(a))
+density_threshold(a) = 0.5
 
 struct MultiRead{I}
     indexlist::I
@@ -75,8 +76,8 @@ function is_sparse_index(ids; density_threshold = 0.5)
     return indexdensity < density_threshold
 end
 
-function process_index(i, cs, ::ChunkRead)
-    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch())
+function process_index(i, cs, ::ChunkRead{S}) where S
+    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch(Val(S)))
     outsize, tempsize, (MultiRead([outinds]),), (MultiRead([tempinds]),), (MultiRead([datainds]),), cs
 end
 
@@ -121,11 +122,15 @@ function find_subranges_sorted(inds,allow_steprange=false)
                 continue
             end
             if current_step === 0
-                # Just set the step (hanst been set before)
+                # Just set the step (hasnt been set before)
                 current_step = inds[iind+1] - inds[iind]
             else
                 #Need to close the range
-                push!(rangelist,inds[current_base]:inds[iind])
+                if current_step == 1
+                    push!(rangelist,inds[current_base]:inds[iind])
+                else
+                    push!(rangelist,inds[current_base]:current_step:inds[iind])
+                end
                 push!(outputinds,current_base:iind)
                 current_base = iind + 1
                 current_step = 0
@@ -141,15 +146,23 @@ end
 ##Implement NCDatasets behavior of splitting list of indices into ranges
 function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
     if issorted(i)
-        rangelist, offsetlist = find_subranges_sorted(i,allow_steprange(s))
-        datainds = MultiRead(rangelist)
-        outinds = view.(Ref(i),)
+        rangelist, outputinds = find_subranges_sorted(i,allow_steprange(s))
+        datainds = tuple.(rangelist)
+        tempinds = map(rangelist,outputinds) do rl,oi
+            v = view(i,oi)
+            r = map(x->(x-first(v))÷step(rl)+1,v)
+            (r,)
+        end
+        outinds = tuple.(outputinds)
+        tempsize = maximum(length(rangelist))
+        (length(i),), (tempsize,), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+    else
+
     end
-    (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
 end
 
-function process_index(i::AbstractArray{Bool,N}, cs, ::ChunkRead) where N
-    process_index(findall(i),cs,ChunkRead())
+function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
+    process_index(findall(i),cs,cr)
 end
 function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) where N
     csnow, csrem = splitcs(i,cs)
@@ -211,16 +224,3 @@ function _writeblock!(A::AbstractArray, A_ret, r::AbstractVector...)
     return nothing
 end =#
 
-macro implement_batchgetindex(t)
-    t = esc(t)
-    quote
-        # Define fallbacks for reading and writing sparse data
-        function DiskArrays.readblock!(A::$t, A_ret, r::AbstractVector...)
-            return _readblock!(A, A_ret, r...)
-        end
-
-        function DiskArrays.writeblock!(A::$t, A_ret, r::AbstractVector...)
-            return _writeblock!(A, A_ret, r...)
-        end
-    end
-end

@@ -645,7 +645,6 @@ struct TestArray{T,N} <: AbstractArray{T,N} end
     DiskArrays.@implement_array_methods TestArray
     DiskArrays.@implement_permutedims TestArray
     DiskArrays.@implement_subarray TestArray
-    DiskArrays.@implement_batchgetindex TestArray
     DiskArrays.@implement_diskarray TestArray
 end
 
@@ -729,3 +728,9 @@ end
     @test readranges == [1:5, 6:7, 10:19, 20:20]
     @test offsets == [1:5, 6:8, 9:13, 14:14]
 end
+
+# @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
+# inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
+# readranges, offsets = find_subranges_sorted(inds,false)
+# @test readranges == [1:1, 3:3, 5:7, 10:10, 13:13, 16:16, 19:20]
+# @test offsets == [[1:3], [4:4], [5:5,6:7,8:8], [9:9], [10:10], [11:12], [13:13,14:14]]

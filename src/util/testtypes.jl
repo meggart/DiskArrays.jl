@@ -19,15 +19,11 @@ struct AccessCountDiskArray{T,N,A<:AbstractArray{T,N},RS} <: AbstractArray{T,N}
     setindex_log::Vector{Any}
     parent::A
     chunksize::NTuple{N,Int}
-    read_strategy::RS
-    allow_multi_chunk_access::Bool
-    density_threshold::Float64
+    batchstrategy::RS
 end
-DiskArrays.get_batchstrategy(a::AccessCountDiskArray) = a.read_strategy
-DiskArrays.density_threshold(a::AccessCountDiskArray) = a.density_threshold
-DiskArrays.allow_multi_chunk_access(a::AccessCountDiskArray) = a.allow_multi_chunk_access
-AccessCountDiskArray(a; chunksize=size(a),density_threshold=0.5,allow_multi_chunk_access=false,read_strategy=DiskArrays.ChunkRead(Val(false))) = 
-  AccessCountDiskArray([], [], a, chunksize,read_strategy,allow_multi_chunk_access, density_threshold)
+DiskArrays.batchstrategy(a::AccessCountDiskArray) = a.batchstrategy
+AccessCountDiskArray(a; chunksize=size(a),batchstrategy=DiskArrays.ChunkRead(DiskArrays.NoStepRange(),0.5)) = 
+  AccessCountDiskArray([], [], a, chunksize,batchstrategy)
 
 Base.size(a::AccessCountDiskArray) = size(a.parent)
 

@@ -1,26 +1,38 @@
 #Define types for different strategies of reading sparse data
-
+abstract type ChunkStrategy{S} end
 #Read bounding box and extract appropriate values
-struct NoBatch{S} 
-    allow_steprange::Val{S}
-end
+struct CanStepRange end
+struct NoStepRange end
 
+@kwdef struct NoBatch{S} <: ChunkStrategy{S} 
+    allow_steprange::S = NoStepRange()
+    density_threshold::Float64 = 0.5
+end
 #Split contiguous streaks into ranges and read the separately
-struct SubRanges{S}
-    allow_steprange::Val{S}
+@kwdef struct SubRanges{S} <: ChunkStrategy{S} 
+    allow_steprange::S = NoStepRange()
+    density_threshold::Float64 = 0.5
 end
-
 #Split dataset according to chunk and read chunk by chunk
-struct ChunkRead{S} 
-    allow_steprange::Val{S}
+@kwdef struct ChunkRead{S} <: ChunkStrategy{S} 
+    allow_steprange::S = NoStepRange()
+    density_threshold::Float64 = 0.5
 end
+(to::Type{<:ChunkStrategy})(from::ChunkStrategy) = to(from.allow_steprange,from.density_threshold)
+batchstrategy(x) = batchstrategy(haschunks(x))
 
-get_batchstrategy(_) = ChunkRead(Val(false))
-allow_steprange(::NoBatch{S}) where S = S
-allow_steprange(a::SubRanges{S}) where S = S
-allow_steprange(a::ChunkRead{S}) where S = S
-allow_steprange(a) = allow_steprange(get_batchstrategy(a))
-density_threshold(a) = 0.5
+allow_steprange(::ChunkStrategy{S}) where S = allow_steprange(S)
+allow_steprange(::Type{CanStepRange}) = true
+allow_steprange(::Type{NoStepRange}) = false
+allow_steprange(::CanStepRange) = true
+allow_steprange(::NoStepRange) = false
+allow_steprange(a) = allow_steprange(batchstrategy(a))
+
+allow_multi_chunk_access(::ChunkRead) = false
+allow_multi_chunk_access(::SubRanges) = true
+
+density_threshold(a) = density_threshold(batchstrategy(a))
+density_threshold(a::ChunkStrategy) = a.density_threshold
 
 struct MultiRead{I}
     indexlist::I
@@ -48,11 +60,8 @@ end
 
 function has_chunk_gap(cs,ids::AbstractVector{<:Integer})
     #Find largest jump in indices
-    largest_jump = foldl(ids,init=(0,first(ids))) do (largest,last),next
-        largest = max(largest,next-last)
-        (largest,next)
-    end |> first
-    largest_jump > first(cs)
+    minind,maxind = extrema(ids)
+    maxind - minind > first(cs)
 end
 #Return true for all multidimensional indices for now, could be optimised in the future
 has_chunk_gap(cs,ids) = true
@@ -76,10 +85,11 @@ function is_sparse_index(ids; density_threshold = 0.5)
     return indexdensity < density_threshold
 end
 
-function process_index(i, cs, ::ChunkRead{S}) where S
-    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch(Val(S)))
+function process_index(i, cs, strategy::Union{ChunkRead,SubRanges})
+    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch(strategy))
     outsize, tempsize, (MultiRead([outinds]),), (MultiRead([tempinds]),), (MultiRead([datainds]),), cs
 end
+
 
 function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
     csnow = first(cs)
@@ -91,15 +101,16 @@ function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
         push!(a,(dataindex=>outindex))
     end
     tempinds,datainds,outinds = Tuple{Vector{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    maxtempind = -1
     for (cI,a) in chunksdict
         dataind = extrema(first,a)
         tempind = first.(a) .- first(dataind) .+ 1
         push!(outinds, (map(last,a),))
         push!(datainds, (first(dataind):last(dataind),))
         push!(tempinds, (tempind,))
+        maxtempind = max(maxtempind,maximum(tempind))
     end
-    tempsize = maximum(length,tempinds)
-    (length(i),), ((tempsize),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+    (length(i),), ((maxtempind),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
 end
 
 function find_subranges_sorted(inds,allow_steprange=false)
@@ -157,12 +168,27 @@ function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
         tempsize = maximum(length(rangelist))
         (length(i),), (tempsize,), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
     else
-
+        p = sortperm(i)
+        i_sorted = view(i,p)
+        rangelist, outputinds = find_subranges_sorted(i_sorted,allow_steprange(s))
+        datainds = tuple.(rangelist)
+        tempinds = map(rangelist,outputinds) do rl,oi
+            v = view(i_sorted,oi)
+            r = map(x->(x-first(v))÷step(rl)+1,v)
+            (r,)
+        end
+        outinds = map(outputinds) do oi
+            (view(p,oi),)
+        end
+        tempsize = maximum(length(rangelist))
+        (length(i),), (tempsize,), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
     end
 end
-
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
     process_index(findall(i),cs,cr)
+end
+function process_index(i::StepRange{<:Integer}, cs, cr::ChunkStrategy{CanStepRange})
+    (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
 end
 function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) where N
     csnow, csrem = splitcs(i,cs)

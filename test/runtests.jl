@@ -325,8 +325,8 @@ end
     zd = zip(da, db)
     zdc = collect(zd)
     zc = collect(z)
-    @test da.getindex_count[] == 6
-    @test db.getindex_count[] == 6
+    @test getindex_count(da) == 6
+    @test getindex_count(db) == 6
     @test all(zd .== z)
     @test all(zdc .== zc)
     @test zip(a, da, a) isa DiskArrays.DiskZip
@@ -482,6 +482,58 @@ end
     @test r == a[i...]
     @test getindex_count(a1) == 1
 end
+
+@testset "Vector getindex strategies" begin
+    using DiskArrays: NoStepRange, CanStepRange
+    a_inner = rand(100)
+    inds_sorted = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
+    inds_unsorted = [7, 5, 1, 16, 1, 10, 20, 6, 19, 1, 13, 6, 3, 16]
+    a = AccessCountDiskArray(a_inner,chunksize=(10,),batchstrategy=DiskArrays.ChunkRead(NoStepRange(),0.5));
+    b1 = a[inds_sorted];
+    @test b1 == a_inner[inds_sorted]
+    @test getindex_log(a) == [(1:20,)]
+    empty!(a.getindex_log)
+    b2 = a[inds_unsorted]
+    @test b2 == a_inner[inds_unsorted]
+    @test getindex_log(a) == [(1:20,)]
+    
+    a = AccessCountDiskArray(a_inner,chunksize=(5,),batchstrategy=DiskArrays.ChunkRead(CanStepRange(),0.8));
+    b1 = a[inds_sorted];
+    @test b1 == a_inner[inds_sorted]
+    @test sort(getindex_log(a)) == [(1:5,), (6:10,), (13:13,), (16:20,)]
+    empty!(a.getindex_log)
+    b2 = a[inds_unsorted]
+    @test b2 == a_inner[inds_unsorted]
+    @test sort(getindex_log(a)) == [(1:5,), (6:10,), (13:13,), (16:20,)]
+    
+    
+    a = AccessCountDiskArray(a_inner,chunksize=(10,),batchstrategy=DiskArrays.SubRanges(CanStepRange(),0.5));
+    b1 = a[inds_sorted];
+    @test b1 == a_inner[inds_sorted]
+    @test getindex_log(a) == [(1:20,)]
+    empty!(a.getindex_log)
+    b2 = a[inds_unsorted]
+    @test b2 == a_inner[inds_unsorted]
+    @test getindex_log(a) == [(1:20,)]
+    
+    a = AccessCountDiskArray(a_inner,chunksize=(5,),batchstrategy=DiskArrays.SubRanges(CanStepRange(),0.8));
+    b1 = a[inds_sorted];
+    @test b1 == a_inner[inds_sorted]
+    @test sort(getindex_log(a)) == [(1:2:5,), (6:7,), (10:3:19,), (20:20,)]
+    empty!(a.getindex_log)
+    b2 = a[inds_unsorted]
+    @test b2 == a_inner[inds_unsorted]
+    @test sort(getindex_log(a)) == [(1:2:5,), (6:7,), (10:3:19,), (20:20,)]
+    
+    a = AccessCountDiskArray(a_inner,chunksize=(5,),batchstrategy=DiskArrays.SubRanges(NoStepRange(),0.8));
+    b1 = a[inds_sorted];
+    @test b1 == a_inner[inds_sorted]
+    @test sort(getindex_log(a)) == [(1:1,), (3:3,), (5:7,), (10:10,), (13:13,), (16:16,), (19:20,)]
+    empty!(a.getindex_log)
+    b2 = a[inds_unsorted]
+    @test b2 == a_inner[inds_unsorted]
+    @test sort(getindex_log(a)) == [(1:1,), (3:3,), (5:7,), (10:10,), (13:13,), (16:16,), (19:20,)]
+    end
 
 @testset "generator" begin
     a = collect(reshape(1:90, 10, 9))
@@ -717,15 +769,15 @@ end
 
 @testset "Range subset identification" begin
     inds = [1,2,2,3,5,6,7,10,10]
-    readranges, offsets = find_subranges_sorted(inds,false)
+    readranges, offsets = DiskArrays.find_subranges_sorted(inds,false)
     @test readranges == [1:3,5:7,10:10]
     @test offsets    == [1:4,5:7,8:9]
     inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
-    readranges, offsets = find_subranges_sorted(inds,false)
+    readranges, offsets = DiskArrays.find_subranges_sorted(inds,false)
     @test readranges == [1:1, 3:3, 5:7, 10:10, 13:13, 16:16, 19:20]
     @test offsets == [1:3, 4:4, 5:8, 9:9, 10:10, 11:12, 13:14]
-    readranges, offsets = find_subranges_sorted(inds,true)
-    @test readranges == [1:5, 6:7, 10:19, 20:20]
+    readranges, offsets = DiskArrays.find_subranges_sorted(inds,true)
+    @test readranges == [1:2:5, 6:7, 10:3:19, 20:20]
     @test offsets == [1:5, 6:8, 9:13, 14:14]
 end
 

@@ -256,8 +256,16 @@ end
 
 # Chunked trait
 
-struct Chunked end
-struct Unchunked end
+struct Chunked{BS}
+    batchstrategy::BS
+end
+Chunked() = Chunked(ChunkRead())
+struct Unchunked{BS}
+    batchstrategy::BS
+end
+Unchunked() = Unchunked(SubRanges())
+batchstrategy(c::Chunked) = c.batchstrategy
+batchstrategy(c::Unchunked) = c.batchstrategy
 
 function haschunks end
 haschunks(x) = Unchunked()

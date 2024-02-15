@@ -12,7 +12,6 @@ end DiskArrays
 export AbstractDiskArray, eachchunk, ChunkIndex, ChunkIndices
 
 include("scalar.jl")
-include("multiindex.jl")
 include("diskarray.jl")
 include("array.jl")
 include("broadcast.jl")

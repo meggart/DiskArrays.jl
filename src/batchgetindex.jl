@@ -48,12 +48,14 @@ end
 mapflatten(f,x) = foldl((x,y)->(x...,f(y)),x, init=())
 Base.size(a::MRArray) = mapflatten(length,a.a)
 Base.IndexStyle(::Type{<:MRArray}) = IndexCartesian()
-function merge_indices(ret,a,i) 
-    merge_indices((ret...,first(a)[first(i)]...),Base.tail(a),Base.tail(i))
-end
-merge_indices(ret,::Tuple{},::Tuple{}) = ret
+flatten1(a) = _flatten(first(a),Base.tail(a))
+_flatten(r,a) = _flatten((r...,first(a)...),Base.tail(a))
+_flatten(r,::Tuple{}) = r
 function Base.getindex(a::MRArray{<:Any,N},I::Vararg{Int, N}) where N
-    merge_indices((),a.a,I)
+    #merge_indices((),a.a,I)
+    flatten1(map(a.a,I) do aa,ii
+        aa[ii]
+    end)
 end
 
 function has_chunk_gap(cs,ids::AbstractVector{<:Integer})

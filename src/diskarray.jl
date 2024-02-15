@@ -63,6 +63,7 @@ _need_batch(::Tuple{}, _, _) = false
 _need_batch(_, ::Tuple{}, _) = false
 
 need_batch_index(::Union{Integer,UnitRange,Colon}, cs, _) = false, Base.tail(cs)
+need_batch_index(::StepRange, cs, ::ChunkStrategy{CanStepRange}) = false, Base.tail(cs)
 function need_batch_index(i, cs, batchstrat)
     csnow, csrem = splitcs(i, cs)
     allow_multi = allow_multi_chunk_access(batchstrat)

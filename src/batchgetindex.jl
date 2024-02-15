@@ -41,10 +41,8 @@ end
 struct MRArray{T,N,A} <: AbstractArray{T,N}
     a::A
 end
-tuple_type_length(::Type{<:NTuple{N}}) where N = N
 function MRArray(a::NTuple{N,MultiRead}) where N 
     allvecs = getproperty.(a,:indexlist)
-    # M = sum(tuple_type_length,eltype.(allvecs))
     MRArray{Any,N,typeof(allvecs)}(allvecs)
 end
 mapflatten(f,x) = foldl((x,y)->(x...,f(y)),x, init=())
@@ -187,7 +185,7 @@ end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
     process_index(findall(i),cs,cr)
 end
-function process_index(i::StepRange{<:Integer}, cs, cr::ChunkStrategy{CanStepRange})
+function process_index(i::StepRange{<:Integer}, cs, ::ChunkStrategy{CanStepRange})
     (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
 end
 function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) where N
@@ -213,40 +211,6 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) 
     end
     (length(i),), tempsize, (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), csrem
 end
-# Define fallbacks for reading and writing sparse data
-#= function _readblock!(A::AbstractArray, A_ret, r::AbstractVector...)
-    if need_batch(A,r)
-        # Fall back to batchgetindex to do the readblock
-        A_ret .= batchgetindex(A, r...)
-    else
-        # Read the whole ranges in one go and subset what is required
-        mi, ma = map(minimum, r), map(maximum, r)
-        output_array_size = map((a, b) -> b - a + 1, mi, ma)
-        A_temp = similar(A_ret, output_array_size)
-        readranges = map(:, mi, ma)
-        readblock!(A, A_temp, readranges...)
-        subset = map(ir -> ir .- (minimum(ir) .- 1), r)
-        A_ret .= view(A_temp, subset...)
-    end
-    return nothing
-end
 
-function _writeblock!(A::AbstractArray, A_ret, r::AbstractVector...)
-    #Check how sparse the vectors are, we look at the largest stride in the inputs
-    need_batch = map(approx_chunksize(eachchunk(A)), r) do cs, ids
-        length(ids) == 1 && return false
-        largest_jump = maximum(diff(ids))
-        mi, ma = extrema(ids)
-        return largest_jump > cs && length(ids) / (ma - mi) < 0.5
-    end
-    if any(need_batch)
-        batchsetindex!(A, A_ret, r...)
-    else
-        mi, ma = map(minimum, r), map(maximum, r)
-        A_temp = similar(A_ret, map((a, b) -> b - a + 1, mi, ma))
-        A_temp[map(ir -> ir .- (minimum(ir) .- 1), r)...] = A_ret
-        writeblock!(A, A_temp, map(:, mi, ma)...)
-    end
-    return nothing
-end =#
+
 

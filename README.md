@@ -6,12 +6,13 @@
 [![CI](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml)
 [![Codecov](https://codecov.io/gh/meggart/DiskArrays.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/meggart/DiskArrays.jl/tree/main)
 
-This package is an attempt to collect utilities for working with n-dimensional array-like data
-structures that do not have considerable overhead for single read operations. Most important
-examples are arrays that represent data on hard disk that are accessed through a C
-library or that are compressed in chunks. It can be inadvisable to make these arrays a subtype
-of `AbstractArray` many functions working with AbstractArrays assume fast random access into single
-values (including basic things like `getindex`, `show`, `reduce`, etc...). Currently supported features are:
+This package provides a collection of utilities for working with n-dimensional array-like data
+structures that do not have considerable overhead for single read operations. 
+Most important examples are arrays that represent data on hard disk that are accessed through a C
+library or that are compressed in chunks. 
+It can be inadvisable to make these arrays a subtype of `AbstractArray` many functions working with AbstractArrays assume fast random access into single values (including basic things like `getindex`, `show`, `reduce`, etc...). 
+
+Currently supported features are:
 
   - `getindex`/`setindex` with the same rules as base (trailing or singleton dimensions etc)
   - views into `DiskArrays`
@@ -23,13 +24,44 @@ values (including basic things like `getindex`, `show`, `reduce`, etc...). Curre
   - customization of `broadcast` when there is a `DiskArray` on the LHS. This at least makes things
   like `a.=5` possible and relatively fast
 
-There are basically two ways to use this package.
-Either one makes the abstraction directly a subtype of `AbstractDiskArray` which requires
-to implement a single `readblock!` method that reads a Cartesian range of data points.
-The remaining `getindex` methods will 
-come for free then. The second way is to use
-the `interpret_indices_disk` function to get a translation of the user-supplied indices
-into a set of ranges and then use these to read the data from disk.
+
+## AbstractDiskArray Interface definition
+
+Package authors who want to use this library to make their disk-based array an `AbstractDiskArray` should at least
+implement methods for the following functions:
+
+````julia
+Base.size(A::CustomDiskArray)
+readblock!(A::CustomDiskArray{T,N},aout,r::Vargarg{AbstractUnitRange,N})
+writeblock!(A::CustomDiskArray{T,N},ain,r::Vargarg{AbstractUnitRange,N})
+```` 
+
+Here `readblock!` will read a subset of array `A` in a hyper-rectangle defined by the unit ranges `r`. The results shall be written into `aout`. `writeblock!` should write the data given by `ain` into the (hyper-)rectangle of A defined by `r`
+When defining the functions it can be safely assumed that `length(r) == ndims(A)` as well as `size(ain) == length.(r)`.
+However, bounds checking is *not* performed by the DiskArray machinery and currently should be done by the implementation. 
+
+If the data on disk has rectangular chunks as underlying storage units, you should addtionally implement the following
+methods to optimize some operations like broadcast, reductions and sparse indexing:
+
+````julia
+DiskArrays.haschunks(A::CustomDiskArray) = DiskArrays.Chunked()
+DiskArrays.eachchunk(A::CustomDiskArray) = DiskArrays.GridChunks(A, chunksize)
+````
+
+where `chunksize` is a int-tuple of chunk lengths. If the array does not have an internal chunking structure, one should
+define
+
+````julia
+DiskArrays.haschunks(A::CustomDiskArray) = DiskArrays.Unchunked()
+````
+
+Implementing only these methods makes all kinds of strange indexing patterns work (Colons, StepRanges, Integer vectors,
+Boolean masks, CartesianIndices, Arrays of CartesianIndex, and mixtures of all these) while making sure that as few
+`readblock!` or `writeblock!` calls as possible are performed by reading a rectangular bounding box of the required
+array values and re-arranging the resulting values into the output array. 
+
+In addition, DiskArrays.jl provides a few optimizations for sparse indexing patterns to avoid reading and discarding 
+too much unnecessary data from disk, for example for indices like `A[:,:,[1,1500]]`. 
 
 # Example
 

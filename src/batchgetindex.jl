@@ -41,13 +41,13 @@ end
 struct MRArray{T,N,A} <: AbstractArray{T,N}
     a::A
 end
-function MRArray(a::NTuple{N,MultiRead}) where N 
-    allvecs = getproperty.(a,:indexlist)
-    MRArray{Any,N,typeof(allvecs)}(allvecs)
+function MRArray(a)
+    MRArray{Any,length(a),typeof(a)}(a)
 end
 mapflatten(f,x) = foldl((x,y)->(x...,f(y)),x, init=())
 Base.size(a::MRArray) = mapflatten(length,a.a)
 Base.IndexStyle(::Type{<:MRArray}) = IndexCartesian()
+Base.eachindex(a::MRArray) = CartesianIndices(size(a))
 flatten1(a) = _flatten(first(a),Base.tail(a))
 _flatten(r,a) = _flatten((r...,first(a)...),Base.tail(a))
 _flatten(r,::Tuple{}) = r
@@ -87,7 +87,7 @@ end
 
 function process_index(i, cs, strategy::Union{ChunkRead,SubRanges})
     outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch(strategy))
-    outsize, tempsize, (MultiRead([outinds]),), (MultiRead([tempinds]),), (MultiRead([datainds]),), cs
+    outsize, tempsize, ([outinds],), ([tempinds],), ([datainds],), cs
 end
 
 
@@ -110,7 +110,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
         push!(tempinds, (tempind,))
         maxtempind = max(maxtempind,maximum(tempind))
     end
-    (length(i),), ((maxtempind),), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+    (length(i),), ((maxtempind),), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
 end
 
 function find_subranges_sorted(inds,allow_steprange=false)
@@ -166,7 +166,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
         end
         outinds = tuple.(outputinds)
         tempsize = maximum(length(rangelist))
-        (length(i),), (tempsize,), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+        (length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
     else
         p = sortperm(i)
         i_sorted = view(i,p)
@@ -181,7 +181,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
             (view(p,oi),)
         end
         tempsize = maximum(length(rangelist))
-        (length(i),), (tempsize,), (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), Base.tail(cs)
+        (length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
     end
 end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
@@ -211,7 +211,7 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) 
         s = datamax.I .- datamin.I .+ 1
         tempsize = max.(s,tempsize)
     end
-    (length(i),), tempsize, (MultiRead(outinds),), (MultiRead(tempinds),), (MultiRead(datainds),), csrem
+    (length(i),), tempsize, (outinds,), (tempinds,), (datainds,), csrem
 end
 
 

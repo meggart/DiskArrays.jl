@@ -40,10 +40,11 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `temp_indices` indices for reading from temp array
 - `data_indices` indices for reading from data array
 """
-Base.@assume_effects :foldable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
-Base.@assume_effects :foldable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::NoBatch) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
-Base.@assume_effects :foldable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::ChunkRead) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
-Base.@assume_effects :foldable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::SubRanges) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
+Base.@assume_effects :removable resolve_indices(a,i) = resolve_indices(a,i,batchstrategy(a))
+Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
+Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::NoBatch) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
+Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::ChunkRead) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
+Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::SubRanges) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
 resolve_indices(a, ::Tuple{Colon}, _) = (length(a),), size(a), (Colon(),), (Colon(),), 1:size(a)
 resolve_indices(a, i::Tuple{<:CartesianIndex}, batch_strategy=NoBatch()) =
     resolve_indices(a, only(i).I, batch_strategy)
@@ -174,9 +175,12 @@ create_outputarray(::Nothing, a, output_size) = Array{eltype(a)}(undef, output_s
 
 getindex_disk(a, i...) = getindex_disk!(nothing, a, i...)
 
-function getindex_disk_batch!(out,a,i...)
-    batch_strategy = batchstrategy(a)
-    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, batch_strategy)
+function _getindex_do_rest(out,a,output_size, temparray_size, output_indices, temparray_indices, data_indices)
+    
+end
+
+function getindex_disk_batch!(out,a,i)
+    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i)
     moutput_indices = MRArray(output_indices)
     mtemparray_indices = MRArray(temparray_indices)
     mdata_indicess = MRArray(data_indices)
@@ -193,7 +197,7 @@ function getindex_disk_batch!(out,a,i...)
     outputarray
 end
 
-function getindex_disk_nobatch!(out,a,i...)
+function getindex_disk_nobatch!(out,a,i)
     output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, NoBatch(allow_steprange(a), 1.0))
     #@debug output_size, temparray_size, output_indices, temparray_indices, data_indices
     outputarray = create_outputarray(out, a, output_size)
@@ -205,9 +209,9 @@ end
 
 function getindex_disk!(out, a, i...)
     if need_batch(a, i)
-        getindex_disk_batch!(out,a,i...)
+        getindex_disk_batch!(out,a,i)
     else
-        getindex_disk_nobatch!(out,a,i...)
+        getindex_disk_nobatch!(out,a,i)
     end
 end
 
@@ -241,24 +245,32 @@ function maybeshrink(temparray, a, indices)
     end
 end
 
+function setindex_disk_batch!(a,v,i)
+    batch_strategy = batchstrategy(a)
+    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, batch_strategy)
+    moutput_indices = MRArray(output_indices)
+    mtemparray_indices = MRArray(temparray_indices)
+    mdata_indicess = MRArray(data_indices)
+    temparray = Array{eltype(a)}(undef, temparray_size...)
+    for (output_indices, temparray_indices, data_indices) in zip(moutput_indices, mtemparray_indices, mdata_indicess)
+        transfer_results_write!(v, temparray, output_indices, temparray_indices)
+        vtemparray = maybeshrink(temparray, a, data_indices)
+        writeblock!(a, vtemparray, data_indices...)
+    end
+end
+
+function setindex_disk_nobatch!(a,v,i)
+    output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, NoBatch())
+    temparray = Array{eltype(a)}(undef, temparray_size...)
+    transfer_results_write!(v, temparray, output_indices, temparray_indices)
+    writeblock!(a, temparray, data_indices...)
+end
+
 function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
     if need_batch(a, i)
-        batch_strategy = batchstrategy(a)
-        output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, batch_strategy)
-        moutput_indices = MRArray(output_indices)
-        mtemparray_indices = MRArray(temparray_indices)
-        mdata_indicess = MRArray(data_indices)
-        temparray = Array{eltype(a)}(undef, temparray_size...)
-        for (output_indices, temparray_indices, data_indices) in zip(moutput_indices, mtemparray_indices, mdata_indicess)
-            transfer_results_write!(v, temparray, output_indices, temparray_indices)
-            vtemparray = maybeshrink(temparray, a, data_indices)
-            writeblock!(a, vtemparray, data_indices...)
-        end
+        setindex_disk_batch!(a,v,i)
     else
-        output_size, temparray_size, output_indices, temparray_indices, data_indices = resolve_indices(a, i, NoBatch())
-        temparray = Array{eltype(a)}(undef, temparray_size...)
-        transfer_results_write!(v, temparray, output_indices, temparray_indices)
-        writeblock!(a, temparray, data_indices...)
+        setindex_disk_nobatch!(a,v,i)
     end
 end
 

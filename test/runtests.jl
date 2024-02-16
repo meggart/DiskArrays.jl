@@ -434,6 +434,15 @@ if VERSION >= v"1.7.0"
     end
 end
 
+@testset "Type inference for indexing" begin
+    data = rand(1:99,10,10,10)
+    a1 = AccessCountDiskArray(data,chunksize=(10,10,1));
+    @test @inferred a1[:,:,1] == data[:,:,1]
+    @test @inferred a1[1:3:10,5,:] == data[1:3:10,5,:]
+    @test @inferred a1[[1,3],[2,4],:] == data[[1,3],[2,4],:]
+    @test @inferred a1[:,CartesianIndex.([(1,2),(5,6),(2,6)])] ==  data[:,CartesianIndex.([(1,2),(5,6),(2,6)])]
+end
+
 @testset "Getindex/Setindex with vectors" begin
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]

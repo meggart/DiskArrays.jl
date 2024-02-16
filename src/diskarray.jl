@@ -45,7 +45,7 @@ Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve
 Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::NoBatch) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
 Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::ChunkRead) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
 Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy::SubRanges) = _resolve_indices(eachchunk(a).chunks, i, (), (), (), (), (), batch_strategy)
-resolve_indices(a, ::Tuple{Colon}, _) = (length(a),), size(a), (Colon(),), (Colon(),), 1:size(a)
+resolve_indices(a, ::Tuple{Colon}, _) = (length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a))
 resolve_indices(a, i::Tuple{<:CartesianIndex}, batch_strategy=NoBatch()) =
     resolve_indices(a, only(i).I, batch_strategy)
 function resolve_indices(a, i::Tuple{<:AbstractVector{<:Integer}}, batchstrategy)
@@ -64,6 +64,7 @@ _need_batch(::Tuple{}, _, _) = false
 _need_batch(_, ::Tuple{}, _) = false
 
 need_batch_index(::Union{Integer,UnitRange,Colon}, cs, _) = false, Base.tail(cs)
+need_batch_index(i::CartesianIndices{N}, cs, _) where N = false, last(splitcs(i, cs))
 need_batch_index(::StepRange, cs, ::ChunkStrategy{CanStepRange}) = false, Base.tail(cs)
 function need_batch_index(i, cs, batchstrat)
     csnow, csrem = splitcs(i, cs)
@@ -224,6 +225,10 @@ function transfer_results!(o, t, oi::Tuple{Vararg{Int}}, ti::Tuple{Vararg{Int}})
     o
 end
 function transfer_results_write!(v, temparray, output_indices, temparray_indices)
+    @show size(v)
+    @show size(temparray)
+    @show output_indices
+    @show temparray_indices
     temparray[temparray_indices...] = view(v, output_indices...)
     temparray
 end
@@ -273,8 +278,6 @@ function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
         setindex_disk_nobatch!(a,v,i)
     end
 end
-
-
 
 "Find the indices of elements containing integers in a Tuple"
 findints(x) = _findints((), 1, x...)

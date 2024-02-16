@@ -27,9 +27,9 @@ macro implement_array_methods(t)
             return $_copyto!(dest, src)
         end
 
-        Base.reverse(a::$t, dims=:) = $_reverse(a, dims)
-        # For ambiguity
-        Base.reverse(a::$t{<:Any,1}, dims::Integer) = $_reverse(a, dims)
+        Base.reverse(a::$t; dims=:) = $_reverse(a, dims)
+        Base.reverse(a::$t{<:Any,1}) = $_reverse1(a)
+        Base.reverse(a::$t{<:Any,1}, start::Integer, stop::Integer=lastindex(a)) = $_reverse1(a, start, stop)
 
         # Here we extend the unexported `_replace` method, but we replicate 
         # much less Base functionality by extending it rather than `replace`.
@@ -64,7 +64,7 @@ end
 _copyto!(dest, Rdest, src, Rsrc) = view(dest, Rdest) .= view(src, Rsrc)
 
 # Use a view for lazy reverse
-_reverse(a, dims::Colon) = _reverse(a, ntuple(identity, ndims(a)))
+_reverse(a, ::Colon) = _reverse(a, ntuple(identity, ndims(a)))
 _reverse(a, dims::Int) = _reverse(a, (dims,))
 function _reverse(A, dims::Tuple)
     rev_axes = map(ntuple(identity, ndims(A)), axes(A)) do d, a
@@ -72,6 +72,12 @@ function _reverse(A, dims::Tuple)
         d in dims ? reverse(ax) : ax
     end
     return view(A, rev_axes...)
+end
+_reverse1(a) = _reverse(a, 1)
+function _reverse1(a, start::Int, stop::Int) 
+    inds = [firstindex(a):start-1; stop:-1:start; stop+1:lastindex(a)]
+    @show inds
+    return view(a, inds)
 end
 
 # Use broadcast instead of a loop. 

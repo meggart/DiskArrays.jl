@@ -535,7 +535,11 @@ end
     @test collect(reverse(a_disk)) == reverse(a)
     @test reverse(view(a_disk, :, 1)) == reverse(a[:, 1])
     @test reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
-    @test collect(reverse(a_disk)) == reverse(a)
+    # ERROR: ArgumentError: Can only subset chunks for sorted indices
+    @test_broken reverse(view(a_disk, :, 1), 5) == reverse(a[:, 1], 5)
+    @test_broken reverse(view(a_disk, :, 1), 5, 10) == reverse(a[:, 1], 5, 10)
+    @test collect(reverse(a_disk)) == collect(reverse(a_disk; dims=:)) == 
+        collect(reverse(a_disk; dims=(1, 2))) == reverse(a)
     @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)
     @test replace(a_disk, 1 => 2) == replace(a, 1 => 2)
     @test rotr90(a_disk) == rotr90(a)

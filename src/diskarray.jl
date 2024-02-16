@@ -225,10 +225,6 @@ function transfer_results!(o, t, oi::Tuple{Vararg{Int}}, ti::Tuple{Vararg{Int}})
     o
 end
 function transfer_results_write!(v, temparray, output_indices, temparray_indices)
-    @show size(v)
-    @show size(temparray)
-    @show output_indices
-    @show temparray_indices
     temparray[temparray_indices...] = view(v, output_indices...)
     temparray
 end

@@ -49,5 +49,6 @@ macro implement_subarray(t)
             return SubDiskArray(SubArray(a, i2))
         end
         Base.view(a::$t, i::CartesianIndices) = view(a, i.indices...)
+        Base.vec(a::$t) = view(a,:)
     end
 end

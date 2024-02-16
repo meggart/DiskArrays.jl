@@ -10,7 +10,7 @@ This package provides a collection of utilities for working with n-dimensional a
 structures that do have considerable overhead for single read operations. 
 Most important examples are arrays that represent data on hard disk that are accessed through a C
 library or that are compressed in chunks. 
-It can be inadvisable to make these arrays a subtype of `AbstractArray` many functions working with AbstractArrays assume fast random access into single values (including basic things like `getindex`, `show`, `reduce`, etc...). 
+It can be inadvisable to make these arrays a direct subtype of `AbstractArray` many functions working with AbstractArrays assume fast random access into single values (including basic things like `getindex`, `show`, `reduce`, etc...). 
 
 Currently supported features are:
 

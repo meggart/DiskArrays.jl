@@ -2,7 +2,8 @@ module TestTypes
 
 import ..DiskArrays
 
-export AccessCountDiskArray, ChunkedDiskArray, UnchunkedDiskArray, getindex_count, setindex_count, trueparent
+export AccessCountDiskArray, ChunkedDiskArray, UnchunkedDiskArray, getindex_count, setindex_count, trueparent,
+  getindex_log, setindex_log
 
 """
     AccessCountDiskArray(A; chunksize)
@@ -13,13 +14,16 @@ and optimise chunk access.
 `getindex_count(A)` and `setindex_count(A)` can be used to check the
 the counters.
 """
-struct AccessCountDiskArray{T,N,A<:AbstractArray{T,N}} <: AbstractArray{T,N}
-    getindex_count::Ref{Int}
-    setindex_count::Ref{Int}
+struct AccessCountDiskArray{T,N,A<:AbstractArray{T,N},RS} <: AbstractArray{T,N}
+    getindex_log::Vector{Any}
+    setindex_log::Vector{Any}
     parent::A
     chunksize::NTuple{N,Int}
+    batchstrategy::RS
 end
-AccessCountDiskArray(a; chunksize=size(a)) = AccessCountDiskArray(Ref(0), Ref(0), a, chunksize)
+DiskArrays.batchstrategy(a::AccessCountDiskArray) = a.batchstrategy
+AccessCountDiskArray(a; chunksize=size(a),batchstrategy=DiskArrays.ChunkRead(DiskArrays.NoStepRange(),0.5)) = 
+  AccessCountDiskArray([], [], a, chunksize,batchstrategy)
 
 Base.size(a::AccessCountDiskArray) = size(a.parent)
 
@@ -28,31 +32,41 @@ DiskArrays.@implement_diskarray AccessCountDiskArray
 
 DiskArrays.haschunks(::AccessCountDiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::AccessCountDiskArray) = DiskArrays.GridChunks(a, a.chunksize)
-function DiskArrays.readblock!(a::AccessCountDiskArray, aout, i::AbstractUnitRange...)
+function DiskArrays.readblock!(a::AccessCountDiskArray, aout, i::OrdinalRange...)
     ndims(a) == length(i) || error("Number of indices is not correct")
-    all(r -> isa(r, AbstractUnitRange), i) || error("Not all indices are unit ranges")
+    foreach(i) do r  
+        isa(r,AbstractUnitRange) || DiskArrays.allow_steprange(a) || error("StepRange passed although trait is false")
+    end
     # println("reading from indices ", join(string.(i)," "))
-    a.getindex_count[] += 1
+    push!(a.getindex_log, i)
     return aout .= a.parent[i...]
 end
-function DiskArrays.writeblock!(a::AccessCountDiskArray, v, i::AbstractUnitRange...)
+function DiskArrays.writeblock!(a::AccessCountDiskArray, v, i::OrdinalRange...)
     ndims(a) == length(i) || error("Number of indices is not correct")
-    all(r -> isa(r, AbstractUnitRange), i) || error("Not all indices are unit ranges")
+    foreach(i) do r  
+        isa(r,AbstractUnitRange) || DiskArrays.allow_steprange(a) || error("StepRange passed although trait is false")
+    end
     # println("Writing to indices ", join(string.(i)," "))
-    a.setindex_count[] += 1
+    push!(a.setindex_log, i)
     return view(a.parent, i...) .= v
 end
 
-getindex_count(a::AccessCountDiskArray) = a.getindex_count[]
-setindex_count(a::AccessCountDiskArray) = a.setindex_count[]
+getindex_count(a::AccessCountDiskArray) = length(a.getindex_log)
+setindex_count(a::AccessCountDiskArray) = length(a.setindex_log)
+getindex_log(a::AccessCountDiskArray) = a.getindex_log
+setindex_log(a::AccessCountDiskArray) = a.setindex_log
 trueparent(a::AccessCountDiskArray) = a.parent
 
 getindex_count(a::DiskArrays.ReshapedDiskArray) = getindex_count(a.parent)
 setindex_count(a::DiskArrays.ReshapedDiskArray) = setindex_count(a.parent)
+getindex_log(a::DiskArrays.ReshapedDiskArray) = getindex_log(a.parent)
+setindex_log(a::DiskArrays.ReshapedDiskArray) = setindex_log(a.parent)
 trueparent(a::DiskArrays.ReshapedDiskArray) = trueparent(a.parent)
 
 getindex_count(a::DiskArrays.PermutedDiskArray) = getindex_count(a.a.parent)
 setindex_count(a::DiskArrays.PermutedDiskArray) = setindex_count(a.a.parent)
+getindex_log(a::DiskArrays.PermutedDiskArray) = getindex_log(a.a.parent)
+setindex_log(a::DiskArrays.PermutedDiskArray) = setindex_log(a.a.parent)
 function trueparent(
     a::DiskArrays.PermutedDiskArray{T,N,<:PermutedDimsArray{T,N,perm,iperm}}
 ) where {T,N,perm,iperm}

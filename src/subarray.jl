@@ -16,17 +16,18 @@ _replace_colon(s, r) = r
 # Diskarrays.jl interface
 function readblock!(a::SubDiskArray, aout, i::OrdinalRange...)
     pinds = parentindices(view(a.v, i...))
-    inds, resh = interpret_indices_disk(parent(a.v), pinds)
-    return readblock!(parent(a.v), reshape(aout, map(length, inds)...), inds...)
+    getindex_disk!(aout, parent(a.v), pinds...)
 end
 function writeblock!(a::SubDiskArray, v, i::OrdinalRange...)
     pinds = parentindices(view(a.v, i...))
-    inds, resh = interpret_indices_disk(parent(a.v), pinds)
-    return writeblock!(parent(a.v), reshape(v, map(length, inds)...), inds...)
+    setindex_disk!(parent(a.v), v, pinds...)
 end
 eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a.v.parent), a.v)
 function eachchunk_view(::Chunked, vv)
     pinds = parentindices(vv)
+    if any(ind->!isa(ind,Union{Int,AbstractRange,Colon}),pinds)
+        throw(ArgumentError("Unable to determine chunksize of non-range views."))
+    end
     iomit = findints(pinds)
     chunksparent = eachchunk(parent(vv))
     newchunks = [
@@ -48,5 +49,6 @@ macro implement_subarray(t)
             return SubDiskArray(SubArray(a, i2))
         end
         Base.view(a::$t, i::CartesianIndices) = view(a, i.indices...)
+        Base.vec(a::$t) = view(a,:)
     end
 end

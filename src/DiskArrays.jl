@@ -9,7 +9,7 @@ using LRUCache: LRUCache, LRU
     read(path, String)
 end DiskArrays
 
-export AbstractDiskArray, interpret_indices_disk, eachchunk, ChunkIndex, ChunkIndices
+export AbstractDiskArray, eachchunk, ChunkIndex, ChunkIndices
 
 include("scalar.jl")
 include("diskarray.jl")
@@ -42,7 +42,6 @@ macro implement_diskarray(t)
         @implement_array_methods $t
         @implement_permutedims $t
         @implement_subarray $t
-        @implement_batchgetindex $t
         @implement_cat $t
         @implement_zip $t
         @implement_show $t
@@ -60,12 +59,12 @@ end
 @implement_array_methods AbstractDiskArray
 @implement_permutedims AbstractDiskArray
 @implement_subarray AbstractDiskArray
-@implement_batchgetindex AbstractDiskArray
 @implement_cat AbstractDiskArray
 @implement_generator AbstractDiskArray
 @implement_show AbstractDiskArray
 
 #And we define the test types
 include("util/testtypes.jl")
+
 
 end # module

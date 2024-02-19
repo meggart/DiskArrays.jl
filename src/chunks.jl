@@ -202,6 +202,14 @@ function chunktype_from_chunksizes(chunks)
     end
 end
 
+"""
+    arraysize_from_chunksize(g::ChunkType)
+
+Returns the size of the dimension represented by a chunk object. 
+"""
+arraysize_from_chunksize(cs::DiskArrays.RegularChunks)=cs.s
+arraysize_from_chunksize(cs::DiskArrays.IrregularChunks)=last(cs.offsets)
+
 # DiskArrays interface
 
 """
@@ -248,8 +256,16 @@ end
 
 # Chunked trait
 
-struct Chunked end
-struct Unchunked end
+struct Chunked{BS}
+    batchstrategy::BS
+end
+Chunked() = Chunked(ChunkRead())
+struct Unchunked{BS}
+    batchstrategy::BS
+end
+Unchunked() = Unchunked(SubRanges())
+batchstrategy(c::Chunked) = c.batchstrategy
+batchstrategy(c::Unchunked) = c.batchstrategy
 
 function haschunks end
 haschunks(x) = Unchunked()
@@ -323,4 +339,3 @@ function estimate_chunksize(s, si)
     return GridChunks(s, cs)
 end
 
-include("batchgetindex.jl")

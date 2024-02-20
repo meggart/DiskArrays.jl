@@ -120,9 +120,9 @@ end
 function process_index(i::AbstractUnitRange, cs)
     (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
 end
-function process_index(i::AbstractVector{<:Integer}, cs, ::NoBatch)
+function process_index(i::AbstractArray{<:Integer}, cs, ::NoBatch)
     indmin, indmax = extrema(i)
-    (length(i),), ((indmax - indmin + 1),), (Colon(),), ((i .- (indmin - 1)),), (indmin:indmax,), Base.tail(cs)
+    size(i), ((indmax - indmin + 1),), map(_->Colon(),size(i)), ((i .- (indmin - 1)),), (indmin:indmax,), Base.tail(cs)
 end
 function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
@@ -133,7 +133,7 @@ function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     tempinds = view(i, range.(indmin, indmax)...)
     (sum(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax), csrem
 end
-function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
+function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
     s = arraysize_from_chunksize.(csnow)
     cindmin, cindmax = extrema(view(CartesianIndices(s), i))
@@ -141,14 +141,15 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::NoBatch) wh
     tempsize = indmax .- indmin .+ 1
     tempoffset = cindmin - oneunit(cindmin)
     tempinds = i .- tempoffset
-    (length(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax), csrem
+    outinds = map(_->Colon(),size(i))
+    size(i), tempsize, outinds, (tempinds,), range.(indmin, indmax), csrem
 end
 function process_index(i::CartesianIndices{N}, cs, ::NoBatch) where {N}
     _, csrem = splitcs(i, cs)
     cols = map(_ -> Colon(), i.indices)
     length.(i.indices), length.(i.indices), cols, cols, i.indices, csrem
 end
-splitcs(i::AbstractVector{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
+splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
 splitcs(i::AbstractArray{Bool}, cs) = splitcs(size(i), (), cs)
 splitcs(i::CartesianIndices, cs) = splitcs(i.indices, (), cs)
 splitcs(_, cs) = (first(cs),), Base.tail(cs)

@@ -76,7 +76,6 @@ end
 _reverse1(a) = _reverse(a, 1)
 function _reverse1(a, start::Int, stop::Int) 
     inds = [firstindex(a):start-1; stop:-1:start; stop+1:lastindex(a)]
-    @show inds
     return view(a, inds)
 end
 

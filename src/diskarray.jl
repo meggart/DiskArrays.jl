@@ -87,22 +87,15 @@ _resolve_indices(::Tuple{}, ::Tuple{}, output_size, temp_sizes, output_indices, 
 #No dimension left in array, only singular indices allowed
 function _resolve_indices(::Tuple{}, i, output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
     inow = first(i)
-    if inow isa Integer
-        inow == 1 || throw(ArgumentError("Trailing indices must be 1"))
-        _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
-    elseif inow isa AbstractVector
-        (length(inow) == 1 && first(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
-        output_size = (output_size..., 1)
-        output_indices = (output_indices..., 1)
-        _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
-    else
-        throw(ArgumentError("Trailing indices must be 1"))
-    end
+    (length(inow) == 1 && only(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
+    output_size = (output_size..., size(inow)...)
+    output_indices = (output_indices..., size(inow)...)
+    _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
 end
 #Still dimensions left, but no indices available
 function _resolve_indices(cs, ::Tuple{}, output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
     csnow = first(cs)
-    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Wrong indexing"))
+    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
     data_indices = (data_indices..., 1:1)
     temp_sizes = (temp_sizes..., 1)
     temp_indices = (temp_indices..., 1)

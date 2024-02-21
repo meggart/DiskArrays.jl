@@ -87,22 +87,15 @@ _resolve_indices(::Tuple{}, ::Tuple{}, output_size, temp_sizes, output_indices, 
 #No dimension left in array, only singular indices allowed
 function _resolve_indices(::Tuple{}, i, output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
     inow = first(i)
-    if inow isa Integer
-        inow == 1 || throw(ArgumentError("Trailing indices must be 1"))
-        _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
-    elseif inow isa AbstractVector
-        (length(inow) == 1 && first(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
-        output_size = (output_size..., 1)
-        output_indices = (output_indices..., 1)
-        _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
-    else
-        throw(ArgumentError("Trailing indices must be 1"))
-    end
+    (length(inow) == 1 && only(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
+    output_size = (output_size..., size(inow)...)
+    output_indices = (output_indices..., size(inow)...)
+    _resolve_indices((), Base.tail(i), output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
 end
 #Still dimensions left, but no indices available
 function _resolve_indices(cs, ::Tuple{}, output_size, temp_sizes, output_indices, temp_indices, data_indices, nb)
     csnow = first(cs)
-    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Wrong indexing"))
+    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
     data_indices = (data_indices..., 1:1)
     temp_sizes = (temp_sizes..., 1)
     temp_indices = (temp_indices..., 1)
@@ -120,9 +113,9 @@ end
 function process_index(i::AbstractUnitRange, cs)
     (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
 end
-function process_index(i::AbstractVector{<:Integer}, cs, ::NoBatch)
+function process_index(i::AbstractArray{<:Integer}, cs, ::NoBatch)
     indmin, indmax = extrema(i)
-    (length(i),), ((indmax - indmin + 1),), (Colon(),), ((i .- (indmin - 1)),), (indmin:indmax,), Base.tail(cs)
+    size(i), ((indmax - indmin + 1),), map(_->Colon(),size(i)), ((i .- (indmin - 1)),), (indmin:indmax,), Base.tail(cs)
 end
 function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
@@ -133,7 +126,7 @@ function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     tempinds = view(i, range.(indmin, indmax)...)
     (sum(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax), csrem
 end
-function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
+function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
     s = arraysize_from_chunksize.(csnow)
     cindmin, cindmax = extrema(view(CartesianIndices(s), i))
@@ -141,14 +134,15 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::NoBatch) wh
     tempsize = indmax .- indmin .+ 1
     tempoffset = cindmin - oneunit(cindmin)
     tempinds = i .- tempoffset
-    (length(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax), csrem
+    outinds = map(_->Colon(),size(i))
+    size(i), tempsize, outinds, (tempinds,), range.(indmin, indmax), csrem
 end
 function process_index(i::CartesianIndices{N}, cs, ::NoBatch) where {N}
     _, csrem = splitcs(i, cs)
     cols = map(_ -> Colon(), i.indices)
     length.(i.indices), length.(i.indices), cols, cols, i.indices, csrem
 end
-splitcs(i::AbstractVector{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
+splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
 splitcs(i::AbstractArray{Bool}, cs) = splitcs(size(i), (), cs)
 splitcs(i::CartesianIndices, cs) = splitcs(i.indices, (), cs)
 splitcs(_, cs) = (first(cs),), Base.tail(cs)

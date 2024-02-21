@@ -67,8 +67,8 @@ end
 has_chunk_gap(cs,ids) = true
 
 #Compute the number of possible indices in the hyperrectangle
-span(v::AbstractVector{<:Integer}) = 1 -(-(extrema(v)...))
-function span(v::AbstractVector{CartesianIndex{N}}) where N
+span(v::AbstractArray{<:Integer}) = 1 -(-(extrema(v)...))
+function span(v::AbstractArray{CartesianIndex{N}}) where N
     minind,maxind = extrema(v)
     prod((maxind-minind+oneunit(minind)).I)
 end
@@ -78,7 +78,7 @@ function span(v::AbstractArray{Bool})
 end
 #The number of indices to actually be read
 numind(v::AbstractArray{Bool}) = sum(v)
-numind(v::Union{AbstractVector{<:Integer},AbstractVector{<:CartesianIndex}})=length(v)
+numind(v::Union{AbstractArray{<:Integer},AbstractArray{<:CartesianIndex}})=length(v)
 
 function is_sparse_index(ids; density_threshold = 0.5)
     indexdensity = numind(ids) / span(ids)
@@ -91,16 +91,17 @@ function process_index(i, cs, strategy::Union{ChunkRead,SubRanges})
 end
 
 
-function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
+function process_index(i::AbstractArray{<:Integer,N}, cs, ::ChunkRead) where N
     csnow = first(cs)
-    chunksdict = Dict{Int,Vector{Pair{Int,Int}}}()
+    chunksdict = Dict{Int,Vector{Pair{Int,CartesianIndex{N}}}}()
     # Look for affected chunks
-    for (outindex,dataindex) in enumerate(i)
+    for outindex in CartesianIndices(i)
+        dataindex = i[outindex]
         cI = findchunk(csnow,dataindex)
         a = get!(()->Pair{Int,Int}[],chunksdict,cI)
         push!(a,(dataindex=>outindex))
     end
-    tempinds,datainds,outinds = Tuple{Vector{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    tempinds,datainds,outinds = Tuple{Vector{Int}}[], Tuple{UnitRange{Int}}[], Tuple{Vector{CartesianIndex{N}}}[]
     maxtempind = -1
     for (cI,a) in chunksdict
         dataind = extrema(first,a)
@@ -110,7 +111,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, ::ChunkRead)
         push!(tempinds, (tempind,))
         maxtempind = max(maxtempind,maximum(tempind))
     end
-    (length(i),), ((maxtempind),), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
+    size(i), ((maxtempind),), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
 end
 
 function find_subranges_sorted(inds,allow_steprange=false)
@@ -154,9 +155,17 @@ function find_subranges_sorted(inds,allow_steprange=false)
     rangelist, outputinds
 end
 
+#For index arrays >1D we need to store the cartesian indices in the sort
+#perm result
+function mysortperm(i)
+    p = collect(vec(CartesianIndices(i)))
+    sort!(p;by=Base.Fix1(getindex,i))
+    p
+end
+mysortperm(i::AbstractVector) = sortperm(i)
 ##Implement NCDatasets behavior of splitting list of indices into ranges
-function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
-    if issorted(i)
+function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
+    if i isa AbstractVector && issorted(i)
         rangelist, outputinds = find_subranges_sorted(i,allow_steprange(s))
         datainds = tuple.(rangelist)
         tempinds = map(rangelist,outputinds) do rl,oi
@@ -168,7 +177,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
         tempsize = maximum(length(rangelist))
         (length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
     else
-        p = sortperm(i)
+        p = mysortperm(i)
         i_sorted = view(i,p)
         rangelist, outputinds = find_subranges_sorted(i_sorted,allow_steprange(s))
         datainds = tuple.(rangelist)
@@ -181,7 +190,7 @@ function process_index(i::AbstractVector{<:Integer}, cs, s::SubRanges)
             (view(p,oi),)
         end
         tempsize = maximum(length(rangelist))
-        (length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
+        size(i), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
     end
 end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N

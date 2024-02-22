@@ -87,7 +87,7 @@ end
 
 function process_index(i, cs, strategy::Union{ChunkRead,SubRanges})
     ii,cs = process_index(i,cs, NoBatch(strategy))
-    DiskIndex(ii.output_size, ii.temparray_size, ([ii.output_indices],), ([ii.temparray_indices],), ([ii.data_indices],)), cs
+    DiskIndex(ii.output_size, ii.temparray_size, ([ii.output_indices],), ([ii.temparray_indices],), ([ii.data_indices],),outalign(i)), cs
 end
 
 
@@ -111,7 +111,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, ::ChunkRead) where N
         push!(tempinds, (tempind,))
         maxtempind = max(maxtempind,maximum(tempind))
     end
-    DiskIndex(size(i), ((maxtempind),), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
+    DiskIndex(size(i), ((maxtempind),), (outinds,), (tempinds,), (datainds,),NoAlign()), Base.tail(cs)
 end
 
 function find_subranges_sorted(inds,allow_steprange=false)
@@ -175,7 +175,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
         end
         outinds = tuple.(outputinds)
         tempsize = maximum(length(rangelist))
-        DiskIndex((length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
+        DiskIndex((length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,),NoAlign()), Base.tail(cs)
     else
         p = mysortperm(i)
         i_sorted = view(i,p)
@@ -190,7 +190,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
             (view(p,oi),)
         end
         tempsize = maximum(length(rangelist))
-        DiskIndex(size(i), (tempsize,), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
+        DiskIndex(size(i), (tempsize,), (outinds,), (tempinds,), (datainds,),NoAlign()), Base.tail(cs)
     end
 end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
@@ -220,7 +220,7 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) 
         s = datamax.I .- datamin.I .+ 1
         tempsize = max.(s,tempsize)
     end
-    DiskIndex((length(i),), tempsize, (outinds,), (tempinds,), (datainds,)), csrem
+    DiskIndex((length(i),), tempsize, (outinds,), (tempinds,), (datainds,),NoAlign()), csrem
 end
 
 

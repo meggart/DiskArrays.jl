@@ -41,9 +41,9 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `data_indices` indices for reading from data array
 """
 Base.@assume_effects :removable resolve_indices(a,i) = resolve_indices(a,i,batchstrategy(a))
-Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((),(),(),(),()), batch_strategy)
-Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((), (), (), (), ()), batch_strategy)
-resolve_indices(a, ::Tuple{Colon}, _) = DiskIndex((length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a)))
+Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((),(),(),(),(),PerfectAlign()), batch_strategy)
+Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((), (), (), (), (),PerfectAlign()), batch_strategy)
+resolve_indices(a, ::Tuple{Colon}, _) = DiskIndex((length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a)),ReshapeOutArray())
 resolve_indices(a, i::Tuple{<:CartesianIndex}, batch_strategy=NoBatch()) =
     resolve_indices(a, only(i).I, batch_strategy)
 function resolve_indices(a, i::Tuple{<:AbstractVector{<:Integer}}, batchstrategy)
@@ -71,39 +71,20 @@ function need_batch_index(i, cs, batchstrat)
     nb = (allow_multi || has_chunk_gap(approx_chunksize.(csnow), i)) && is_sparse_index(i; density_threshold=density_thresh)
     nb, csrem
 end
-function _resolve_indices(cs, i, indices_pre, nb)
-    inow = first(i)
-    indices_new, cs_rem = process_index(inow, cs, nb)
-    _resolve_indices(cs_rem, Base.tail(i), merge_index(indices_pre,indices_new), nb)
-end
-_resolve_indices(::Tuple{}, ::Tuple{}, indices, nb) = indices
-#No dimension left in array, only singular indices allowed
-function _resolve_indices(::Tuple{}, i, indices_pre, nb)
-    inow = first(i)
-    (length(inow) == 1 && only(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
-    indices_new = DiskIndex(size(inow),(),size(inow),(),())
-    indices = merge_index(indices_pre,indices_new)
-    _resolve_indices((), Base.tail(i), indices, nb)
-end
-#Still dimensions left, but no indices available
-function _resolve_indices(cs, ::Tuple{}, indices_pre, nb)
-    csnow = first(cs)
-    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
-    indices_new = DiskIndex((),(1,),(),(1,),(1:1,))
-    indices = merge_index(indices_pre,indices_new)
-    _resolve_indices(Base.tail(cs), (), indices, nb)
-end
 
 abstract type OutputAlignment end
-struct PerfectAlign end
+struct PerfectAlign <: OutputAlignment end
 struct DropOutArrayDims{N} <: OutputAlignment
     dims::NTuple{N,Int}
 end
 struct DropTempArrayDims{N} <: OutputAlignment
     dims::NTuple{N,Int}
 end
-struct ReshapeTempArray <: OutputAlignment end
-struct NoAlign end
+const DropArrayDims{N} = Union{DropOutArrayDims{N},DropTempArrayDims{N}} where N
+
+struct ReshapeOutArray <: OutputAlignment end
+struct NoAlign <: OutputAlignment end
+
 
 struct DiskIndex{N,M,A<:Tuple,B<:Tuple,C<:Tuple,D<:OutputAlignment}
     output_size::NTuple{N,Int}
@@ -113,6 +94,8 @@ struct DiskIndex{N,M,A<:Tuple,B<:Tuple,C<:Tuple,D<:OutputAlignment}
     data_indices::C
     alignment::D
 end
+DiskIndex(output_size,temparray_size,output_indices,temparray_indices,data_indices) = 
+    DiskIndex(output_size, temparray_size,output_indices,temparray_indices,data_indices,PerfectAlign())
 @inline function merge_index(a::DiskIndex,b::DiskIndex)
     DiskIndex(
         (a.output_size...,b.output_size...),
@@ -120,23 +103,75 @@ end
         (a.output_indices...,b.output_indices...),
         (a.temparray_indices...,b.temparray_indices...),
         (a.data_indices...,b.data_indices...),
+        merge_alignment(a.alignment,b.alignment,a.output_size,a.temparray_size),
     )
 end
 
 
+merge_alignment(a::PerfectAlign,b::DropOutArrayDims,so,_) = DropOutArrayDims(b.dims .+ length(so))
+merge_alignment(a::PerfectAlign,b::DropTempArrayDims,_,st) = DropTempArrayDims(b.dims .+ length(st))
+merge_alignment(a::OutputAlignment,b::ReshapeOutArray,_,_) = b
+merge_alignment(a::OutputAlignment,b::PerfectAlign,_,_) = a
+merge_alignment(a::DropOutArrayDims,b::DropOutArrayDims,so,_) = DropOutArrayDims((a.dims...,length(so).+b.dims...))
+merge_alignment(a::DropTempArrayDims,b::DropTempArrayDims,_,st) = DropTempArrayDims((a.dims...,length(st).+b.dims...))
+merge_alignment(a::PerfectAlign,b::PerfectAlign,_,_) = PerfectAlign()
+merge_alignment(a::OutputAlignment,b::OutputAlignment,_,_) = NoAlign()
+
+outalign(i::Integer) = DropTempArrayDims((1,))
+outalign(i) = PerfectAlign()
+outalign(i::AbstractArray{<:Integer}) = NoAlign()
+outalign(i::AbstractArray{<:Bool}) = NoAlign()
+outalign(i::AbstractArray{<:CartesianIndex}) = NoAlign()
+
+
+
+
+function _resolve_indices(cs, i, indices_pre::DiskIndex{N,M,A,B,C,D}, nb) where {N,M,A,B,C,D}
+    inow = first(i)
+    indices_new, cs_rem = process_index(inow, cs, nb)
+    _resolve_indices(cs_rem, Base.tail(i), merge_index(indices_pre,indices_new), nb)
+end
+_resolve_indices(::Tuple{}, ::Tuple{}, indices::DiskIndex{N,M,A,B,C,D}, nb) where {N,M,A,B,C,D} = indices
+#No dimension left in array, only singular indices allowed
+function _resolve_indices(::Tuple{}, i, indices_pre::DiskIndex{N,M,A,B,C,D}, nb) where {N,M,A,B,C,D}
+    inow = first(i)
+    (length(inow) == 1 && only(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
+    al = isa(inow,AbstractArray) ? DropOutArrayDims(ntuple(identity,Val(ndims(inow)))) : PerfectAlign()
+    indices_new = DiskIndex(size(inow),(),size(inow),(),(),al)
+    indices = merge_index(indices_pre,indices_new)
+    _resolve_indices((), Base.tail(i), indices, nb)
+end
+#Still dimensions left, but no indices available
+function _resolve_indices(cs, ::Tuple{}, indices_pre::DiskIndex{N,M,A,B,C,D}, nb) where {N,M,A,B,C,D}
+    csnow = first(cs)
+    arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
+    indices_new = DiskIndex((),(1,),(),(1,),(1:1,),DropTempArrayDims((1,)))
+    indices = merge_index(indices_pre,indices_new)
+    _resolve_indices(Base.tail(cs), (), indices, nb)
+end
+
+
+
+
 #outsize, tempsize, outinds,tempinds,datainds,cs
 process_index(i, cs, ::NoBatch) = process_index(i, cs)
-process_index(inow::Integer, cs) = DiskIndex((), (1,), (), (1,), (inow:inow,)), Base.tail(cs)
+process_index(inow::Integer, cs) = DiskIndex((), (1,), (), (1,), (inow:inow,),outalign(inow)), Base.tail(cs)
 function process_index(::Colon, cs)
     s = arraysize_from_chunksize(first(cs))
-    DiskIndex((s,), (s,), (Colon(),), (Colon(),), (1:s,)), Base.tail(cs)
+    DiskIndex((s,), (s,), (Colon(),), (Colon(),), (1:s,),), Base.tail(cs)
 end
-function process_index(i::AbstractUnitRange, cs)
+function process_index(i::AbstractUnitRange{<:Integer}, cs, ::NoBatch)
+    DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
+end
+function process_index(i::AbstractUnitRange{<:Integer}, cs, ::ChunkRead)
+    DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
+end
+function process_index(i::AbstractUnitRange{<:Integer}, cs, ::SubRanges)
     DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{<:Integer}, cs, ::NoBatch)
     indmin, indmax = extrema(i)
-    DiskIndex(size(i), ((indmax - indmin + 1),), map(_->Colon(),size(i)), ((i .- (indmin - 1)),), (indmin:indmax,)), Base.tail(cs)
+    DiskIndex(size(i), ((indmax - indmin + 1),), map(_->Colon(),size(i)), ((i .- (indmin - 1)),), (indmin:indmax,),outalign(i)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
@@ -145,7 +180,7 @@ function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}
     indmin, indmax = cindmin.I, cindmax.I
     tempsize = indmax .- indmin .+ 1
     tempinds = view(i, range.(indmin, indmax)...)
-    DiskIndex((sum(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax)), csrem
+    DiskIndex((sum(i),), tempsize, (Colon(),), (tempinds,), range.(indmin, indmax),outalign(i)), csrem
 end
 function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
@@ -156,7 +191,7 @@ function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) whe
     tempoffset = cindmin - oneunit(cindmin)
     tempinds = i .- tempoffset
     outinds = map(_->Colon(),size(i))
-    DiskIndex(size(i), tempsize, outinds, (tempinds,), range.(indmin, indmax)), csrem
+    DiskIndex(size(i), tempsize, outinds, (tempinds,), range.(indmin, indmax),outalign(i)), csrem
 end
 function process_index(i::CartesianIndices{N}, cs, ::NoBatch) where {N}
     _, csrem = splitcs(i, cs)

@@ -443,6 +443,16 @@ end
     @test @inferred a1[:,CartesianIndex.([(1,2),(5,6),(2,6)])] ==  data[:,CartesianIndex.([(1,2),(5,6),(2,6)])]
 end
 
+
+@testset "Alignment of temporary and output arrays" begin
+    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
+    i = (1:3,:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test di.alignment == DiskArrays.PerfectAlign()
+
+end
+
+
 @testset "Getindex/Setindex with vectors" begin
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]
@@ -491,6 +501,8 @@ end
     @test r == a[i...]
     @test getindex_count(a1) == 1
 end
+
+
 
 @testset "Vector getindex strategies" begin
     using DiskArrays: NoStepRange, CanStepRange

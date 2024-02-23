@@ -153,6 +153,7 @@ splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)
 
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     checkscalar(i)
+    checkbounds(a,i...)
     outputarray = Array{eltype(a)}(undef, map(_ -> 1, size(a))...)
     i = Base.to_indices(a, i)
     j = map(1:ndims(a)) do d

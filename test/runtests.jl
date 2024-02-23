@@ -28,6 +28,12 @@ end
     @test DiskArrays.can_scalar() == true
     @test DiskArrays.checkscalar(Bool, 1, 2, 3) == true
     @test DiskArrays.checkscalar(Bool, :, 2:5, 3) == true
+    a = AccessCountDiskArray(reshape(1:24,2,3,4),chunksize=(2,2,2))
+    @test a[1,2,3] == 15
+    @test a[1,2,3,1] == 15
+    @test_throws BoundsError a[1,2]
+    @test a[CartesianIndex(1,2),3] == 15
+    @test a[CartesianIndex(1,2,3)] == 15
 end
 
 function test_getindex(a)

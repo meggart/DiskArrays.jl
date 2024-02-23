@@ -831,6 +831,14 @@ end
     @test offsets == [1:5, 6:8, 9:13, 14:14]
 end
 
+@testset "Show not indexing" begin
+    A = AccessCountDiskArray(rand(19,10))
+    sprint(show, MIME("text/plain"), A)
+    @test getindex_count(A) == 0
+    sprint(show, [A,A])
+    @test getindex_count(A) == 0 
+end
+
 # @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
 # inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
 # readranges, offsets = find_subranges_sorted(inds,false)

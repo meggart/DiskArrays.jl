@@ -124,13 +124,7 @@ function process_index(::Colon, cs)
     s = arraysize_from_chunksize(first(cs))
     DiskIndex((s,), (s,), (Colon(),), (Colon(),), (1:s,),), Base.tail(cs)
 end
-function process_index(i::AbstractUnitRange{<:Integer}, cs, ::NoBatch)
-    DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
-end
-function process_index(i::AbstractUnitRange{<:Integer}, cs, ::ChunkRead)
-    DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
-end
-function process_index(i::AbstractUnitRange{<:Integer}, cs, ::SubRanges)
+function process_index(i::AbstractUnitRange{<:Integer}, cs)
     DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{<:Integer}, cs, ::NoBatch)

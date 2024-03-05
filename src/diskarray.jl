@@ -147,7 +147,7 @@ function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) whe
     indmin, indmax = cindmin.I, cindmax.I
     tempsize = indmax .- indmin .+ 1
     tempoffset = cindmin - oneunit(cindmin)
-    tempinds = i .- tempoffset
+    tempinds = i .- (CartesianIndex(tempoffset),)
     outinds = map(_->Colon(),size(i))
     DiskIndex(size(i), tempsize, outinds, (tempinds,), range.(indmin, indmax)), csrem
 end

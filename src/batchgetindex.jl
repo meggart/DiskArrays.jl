@@ -227,7 +227,9 @@ function process_index(i::AbstractArray{<:CartesianIndex{N},M}, cs, ::Union{Chun
     for (cI,a) in chunksdict
         datamin,datamax = extrema(first,a)
         aa = first.(a)
-        tempind = aa .- datamin .+ oneunit(CartesianIndex{N})
+        tempind = map(aa) do ind
+            ind - datamin + oneunit(CartesianIndex{N})
+        end
         push!(outinds, tuple(map(last,a)))
         push!(datainds, range.(datamin.I,datamax.I))
         push!(tempinds, tuple(tempind))

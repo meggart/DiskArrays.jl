@@ -287,13 +287,21 @@ end
 end
 
 @testset "AbstractDiskArray getindex" begin
-    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1))
-    test_getindex(a)
+    for bs in (DiskArrays.ChunkRead,DiskArrays.SubRanges)
+        for sr in (DiskArrays.CanStepRange, DiskArrays.NoStepRange)
+            a = AccessCountDiskArray(reshape(1:20, 4, 5, 1),batchstrategy=bs(sr,0.5))
+            test_getindex(a)
+        end
+    end
 end
 
 @testset "AbstractDiskArray setindex" begin
-    a = AccessCountDiskArray(zeros(Int, 4, 5, 1))
-    test_setindex(a)
+    for bs in (DiskArrays.ChunkRead,DiskArrays.SubRanges)
+        for sr in (DiskArrays.CanStepRange, DiskArrays.NoStepRange)
+            a = AccessCountDiskArray(zeros(Int, 4, 5, 1),batchstrategy=bs(sr,0.5))
+            test_setindex(a)
+        end
+    end
 end
 
 @testset "Zerodimensional" begin

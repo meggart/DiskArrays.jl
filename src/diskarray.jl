@@ -12,7 +12,7 @@ abstract type AbstractDiskArray{T,N} <: AbstractArray{T,N} end
 
 The only function that should be implemented by a `AbstractDiskArray`. This function
 """
-function readblock!() end
+function readblock! end
 
 """
     writeblock!(A::AbstractDiskArray, A_in, r::AbstractUnitRange...)
@@ -20,7 +20,7 @@ function readblock!() end
 Function that should be implemented by a `AbstractDiskArray` if write operations
 should be supported as well.
 """
-function writeblock!() end
+function writeblock! end
 
 
 function allow_multi_chunk_access(a)
@@ -188,6 +188,7 @@ end
 
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     checkscalar(i)
+    checkbounds(a,i...)
     outputarray = Array{eltype(a)}(undef, map(_ -> 1, size(a))...)
     i = Base.to_indices(a, i)
     j = map(1:ndims(a)) do d

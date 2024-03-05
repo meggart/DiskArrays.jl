@@ -28,6 +28,12 @@ end
     @test DiskArrays.can_scalar() == true
     @test DiskArrays.checkscalar(Bool, 1, 2, 3) == true
     @test DiskArrays.checkscalar(Bool, :, 2:5, 3) == true
+    a = AccessCountDiskArray(reshape(1:24,2,3,4),chunksize=(2,2,2))
+    @test a[1,2,3] == 15
+    @test a[1,2,3,1] == 15
+    @test_throws BoundsError a[1,2]
+    @test a[CartesianIndex(1,2),3] == 15
+    @test a[CartesianIndex(1,2,3)] == 15
 end
 
 function test_getindex(a)
@@ -513,6 +519,10 @@ end
     @test size(r) == (2,2,3)
     @test r == a[i...]
     @test getindex_count(a1) == 1
+    # This Bool vector is supposed to need batching
+    i = Bool[1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1]
+    u = UnchunkedDiskArray(rand(275,305,36))
+    @test u[i,1,1][1] == u[findfirst(i),1,1]
 end
 
 
@@ -855,6 +865,16 @@ end
     @test readranges == [1:2:5, 6:7, 10:3:19, 20:20]
     @test offsets == [1:5, 6:8, 9:13, 14:14]
 end
+
+@testset "Show not indexing" begin
+    A = AccessCountDiskArray(rand(19,10))
+    sprint(show, MIME("text/plain"), A)
+    @test getindex_count(A) == 0
+    sprint(show, [A,A])
+    @test getindex_count(A) == 0 
+end
+
+
 
 # @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
 # inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]

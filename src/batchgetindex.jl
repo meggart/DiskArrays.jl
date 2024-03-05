@@ -196,19 +196,23 @@ end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
     process_index(findall(i),cs,cr)
 end
+function process_index(i::AbstractArray{Bool,N}, cs, cr::SubRanges) where N
+    process_index(findall(i),cs,cr)
+end
 function process_index(i::StepRange{<:Integer}, cs, ::ChunkStrategy{CanStepRange})
     DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
-function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) where N
+function process_index(i::AbstractArray{<:CartesianIndex{N},M}, cs, ::Union{ChunkRead,SubRanges}) where {N,M}
     csnow, csrem = splitcs(i,cs)
-    chunksdict = Dict{CartesianIndex{N},Vector{Pair{CartesianIndex{N},Int}}}()
+    chunksdict = Dict{CartesianIndex{N},Vector{Pair{CartesianIndex{N},CartesianIndex{M}}}}()
     # Look for affected chunks
-    for (outindex,dataindex) in enumerate(i)
+    for outindex in CartesianIndices(i)
+        dataindex = i[outindex]
         cI = CartesianIndex(findchunk.(csnow,dataindex.I))
-        a = get!(()->Pair{CartesianIndex{N},Int}[],chunksdict,cI)
+        a = get!(()->Pair{CartesianIndex{N},CartesianIndex{M}}[],chunksdict,cI)
         push!(a,(dataindex=>outindex))
     end
-    tempinds,datainds,outinds = Tuple{Vector{CartesianIndex{N}}}[], NTuple{N,UnitRange{Int}}[], Tuple{Vector{Int}}[]
+    tempinds,datainds,outinds = Tuple{Vector{CartesianIndex{N}}}[], NTuple{N,UnitRange{Int}}[], Tuple{Vector{CartesianIndex{M}}}[]
     tempsize = map(_->0,csnow)
     for (cI,a) in chunksdict
         datamin,datamax = extrema(first,a)
@@ -220,7 +224,7 @@ function process_index(i::AbstractVector{<:CartesianIndex{N}}, cs, ::ChunkRead) 
         s = datamax.I .- datamin.I .+ 1
         tempsize = max.(s,tempsize)
     end
-    DiskIndex((length(i),), tempsize, (outinds,), (tempinds,), (datainds,)), csrem
+    DiskIndex(size(i), tempsize, (outinds,), (tempinds,), (datainds,)), csrem
 end
 
 

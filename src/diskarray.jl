@@ -40,9 +40,9 @@ Determines a list of tuples used to perform the read or write operations. The re
 - `temp_indices` indices for reading from temp array
 - `data_indices` indices for reading from data array
 """
-Base.@assume_effects :removable resolve_indices(a,i) = resolve_indices(a,i,batchstrategy(a))
-Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((),(),(),(),()), batch_strategy)
-Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((), (), (), (), ()), batch_strategy)
+resolve_indices(a,i) = resolve_indices(a,i,batchstrategy(a))
+resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((),(),(),(),()), batch_strategy)
+resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((), (), (), (), ()), batch_strategy)
 resolve_indices(a, ::Tuple{Colon}, _) = DiskIndex((length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a)))
 resolve_indices(a, i::Tuple{<:CartesianIndex}, batch_strategy=NoBatch()) =
     resolve_indices(a, only(i).I, batch_strategy)

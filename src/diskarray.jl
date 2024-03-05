@@ -43,7 +43,7 @@ Determines a list of tuples used to perform the read or write operations. The re
 Base.@assume_effects :removable resolve_indices(a,i) = resolve_indices(a,i,batchstrategy(a))
 Base.@assume_effects :removable resolve_indices(a, i, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((),(),(),(),()), batch_strategy)
 Base.@assume_effects :removable resolve_indices(a::AbstractVector, i::Tuple{AbstractVector{<:Integer}}, batch_strategy) = _resolve_indices(eachchunk(a).chunks, i, DiskIndex((), (), (), (), ()), batch_strategy)
-resolve_indices(a, ::Tuple{Colon}, _) = DiskIndex((length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a)),ReshapeOutArray())
+resolve_indices(a, ::Tuple{Colon}, _) = DiskIndex((length(a),), size(a), (Colon(),), (Colon(),), map(s->1:s,size(a)))
 resolve_indices(a, i::Tuple{<:CartesianIndex}, batch_strategy=NoBatch()) =
     resolve_indices(a, only(i).I, batch_strategy)
 function resolve_indices(a, i::Tuple{<:AbstractVector{<:Integer}}, batchstrategy)
@@ -194,6 +194,14 @@ function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
     j = map(1:ndims(a)) do d
         d <= length(i) ? (i[d]:i[d]) : 1:1
     end
+    readblock!(a, outputarray, j...)
+    only(outputarray)
+end
+function getindex_disk(a, i::Integer)
+    checkscalar(i)
+    checkbounds(a,i)
+    outputarray = Array{eltype(a)}(undef, map(_ -> 1, size(a))...)
+    j = map(k->k:k,CartesianIndices(a)[i].I)
     readblock!(a, outputarray, j...)
     only(outputarray)
 end

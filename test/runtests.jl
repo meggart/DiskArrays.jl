@@ -48,6 +48,7 @@ function test_getindex(a)
     @test a[2, 3, 1, 1:1] == [10]
     @test a[2, 3, 1, [1], [1]] == fill(10, 1, 1)
     @test a[:, 3, 1, [1]] == reshape(9:12, 4, 1)
+    @test a[CartesianIndices((1:2,1:2)),1] == [1 5; 2 6]
     # Test bitmask indexing
     m = falses(4, 5, 1)
     m[2, [1,2,3,5], 1] .= true
@@ -59,7 +60,7 @@ function test_getindex(a)
     @test a[[3, 5, 8]] == [3, 5, 8]
     @test a[2:4:14] == [2, 6, 10, 14]
     # Test that readblock was called exactly onces for every getindex
-    @test getindex_count(a) == 17
+    @test getindex_count(a) == 18
     @testset "allow_scalar" begin
         DiskArrays.allow_scalar(false)
         @test_throws ErrorException a[2, 3, 1]
@@ -292,8 +293,10 @@ end
 @testset "AbstractDiskArray getindex" begin
     for bs in (DiskArrays.ChunkRead,DiskArrays.SubRanges)
         for sr in (DiskArrays.CanStepRange(), DiskArrays.NoStepRange())
-            a = AccessCountDiskArray(reshape(1:20, 4, 5, 1),batchstrategy=bs(sr,0.5))
-            test_getindex(a)
+            for ds in (0.5,1.0)
+                a = AccessCountDiskArray(reshape(1:20, 4, 5, 1),batchstrategy=bs(sr,ds))
+                test_getindex(a)
+            end
         end
     end
 end

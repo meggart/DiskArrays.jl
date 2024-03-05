@@ -80,8 +80,6 @@ struct DiskIndex{N,M,A<:Tuple,B<:Tuple,C<:Tuple}
     temparray_indices::B
     data_indices::C
 end
-DiskIndex(output_size,temparray_size,output_indices,temparray_indices,data_indices) = 
-    DiskIndex(output_size, temparray_size,output_indices,temparray_indices,data_indices)
 @inline function merge_index(a::DiskIndex,b::DiskIndex)
     DiskIndex(
         (a.output_size...,b.output_size...),

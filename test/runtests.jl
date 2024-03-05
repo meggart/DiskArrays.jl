@@ -448,7 +448,20 @@ end
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     i = (1:3,:,:)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    # @test di.alignment == DiskArrays.PerfectAlign()
+    @test DiskArrays.output_aliasing(di) == :identical
+    i = (1,:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    i = ([1,3],:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :noalign
+    i = (1:3,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    i = (1:3,:,:,1,1)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :identical
+
 
 end
 

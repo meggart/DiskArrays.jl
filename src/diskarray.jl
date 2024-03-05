@@ -170,6 +170,20 @@ splitcs(_, cs) = (first(cs),), Base.tail(cs)
 splitcs(si, csnow, csrem) = splitcs(Base.tail(si), (csnow..., first(csrem)), Base.tail(csrem))
 splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)
 
+#Determine wether output and temp array can a) be identical b) share memory through reshape or 
+# c) need to be allocated individually
+function output_aliasing(di::DiskIndex)
+    if all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.temparray_indices) && 
+        all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.output_indices)
+        if di.output_size == di.temparray_size
+            :identical
+        else 
+            :reshapeoutput
+        end
+    else
+        :noalign
+    end
+end
 
 
 function getindex_disk(a, i::Union{Integer,CartesianIndex}...)
@@ -213,9 +227,17 @@ function getindex_disk_nobatch!(out,a,i)
     indices = resolve_indices(a, i, NoBatch(allow_steprange(a), 1.0))
     #@debug output_size, temparray_size, output_indices, temparray_indices, data_indices
     outputarray = create_outputarray(out, a, indices.output_size)
-    temparray = Array{eltype(a)}(undef, indices.temparray_size...)
-    readblock!(a, temparray, indices.data_indices...)
-    transfer_results!(outputarray, temparray, indices.output_indices, indices.temparray_indices)
+    outalias = output_aliasing(indices)
+    if outalias === :identical
+        readblock!(a, outputarray, indices.data_indices...)
+    elseif outalias === :reshapeoutput
+        temparray = reshape(outputarray,indices.temparray_size)
+        readblock!(a, temparray, indices.data_indices...)
+    else
+        temparray = Array{eltype(a)}(undef, indices.temparray_size...)
+        readblock!(a, temparray, indices.data_indices...)
+        transfer_results!(outputarray, temparray, indices.output_indices, indices.temparray_indices)
+    end
     outputarray
 end
 
@@ -273,9 +295,17 @@ end
 
 function setindex_disk_nobatch!(a,v,i)
     indices = resolve_indices(a, i, NoBatch())
-    temparray = Array{eltype(a)}(undef, indices.temparray_size...)
-    transfer_results_write!(v, temparray, indices.output_indices, indices.temparray_indices)
-    writeblock!(a, temparray, indices.data_indices...)
+    outalias = output_aliasing(indices)
+    if outalias === :identical
+        writeblock!(a, v, indices.data_indices...)
+    elseif outalias === :reshapeoutput
+        temparray = reshape(v,indices.temparray_size)
+        writeblock!(a, temparray, indices.data_indices...)
+    else
+        temparray = Array{eltype(a)}(undef, indices.temparray_size...)
+        transfer_results_write!(v, temparray, indices.output_indices, indices.temparray_indices)
+        writeblock!(a, temparray, indices.data_indices...)
+    end
 end
 
 function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
@@ -284,6 +314,7 @@ function setindex_disk!(a::AbstractArray, v::AbstractArray, i...)
     else
         setindex_disk_nobatch!(a,v,i)
     end
+    v
 end
 
 "Find the indices of elements containing integers in a Tuple"

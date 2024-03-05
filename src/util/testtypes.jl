@@ -34,7 +34,7 @@ DiskArrays.haschunks(::AccessCountDiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::AccessCountDiskArray) = DiskArrays.GridChunks(a, a.chunksize)
 function DiskArrays.readblock!(a::AccessCountDiskArray, aout, i::OrdinalRange...)
     ndims(a) == length(i) || error("Number of indices is not correct")
-    foreach(i) do r  
+    foreach(i) do r
         isa(r,AbstractUnitRange) || DiskArrays.allow_steprange(a) || error("StepRange passed although trait is false")
     end
     # println("reading from indices ", join(string.(i)," "))

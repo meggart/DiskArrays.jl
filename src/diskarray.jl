@@ -108,12 +108,13 @@ end
 function _resolve_indices(cs, ::Tuple{}, indices_pre::DiskIndex, nb) 
     csnow = first(cs)
     arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
-    indices_new = DiskIndex((),(1,),(),(1,),(1:1,))
+    indices_new = add_dimension_index(nb)
     indices = merge_index(indices_pre,indices_new)
     _resolve_indices(Base.tail(cs), (), indices, nb)
 end
 
-
+add_dimension_index(::NoBatch) = DiskIndex((),(1,),(),(1,),(1:1,))
+add_dimension_index(::Union{ChunkRead,SubRanges}) = DiskIndex((),(1,),([()],),([(1,)],),([(1:1,)],))
 
 
 #outsize, tempsize, outinds,tempinds,datainds,cs

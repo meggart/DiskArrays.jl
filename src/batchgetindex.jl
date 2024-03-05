@@ -150,7 +150,11 @@ function find_subranges_sorted(inds,allow_steprange=false)
             end
         end
     end
-    push!(rangelist,inds[current_base]:last(inds))
+    if current_step == 1 || current_step == 0
+        push!(rangelist,inds[current_base]:last(inds))
+    else
+        push!(rangelist,inds[current_base]:current_step:last(inds))
+    end
     push!(outputinds,current_base:length(inds))
     rangelist, outputinds
 end
@@ -174,7 +178,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
             (r,)
         end
         outinds = tuple.(outputinds)
-        tempsize = maximum(length(rangelist))
+        tempsize = maximum(length,rangelist)
         DiskIndex((length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
     else
         p = mysortperm(i)

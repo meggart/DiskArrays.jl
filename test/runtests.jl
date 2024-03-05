@@ -42,13 +42,12 @@ function test_getindex(a)
     @test a[2, 3, 1, 1] == 10
     @test a[:, 1] == [1, 2, 3, 4]
     @test a[1:2, 1:2, 1, 1] == [1 5; 2 6]
-    @test a[2:2:4, 1:2:5] == [2 10 18; 4 12 20]
     @test a[end:-1:1, 1, 1] == [4, 3, 2, 1]
-    @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
     @test a[2, 3, 1, 1:1] == [10]
     @test a[2, 3, 1, [1], [1]] == fill(10, 1, 1)
     @test a[:, 3, 1, [1]] == reshape(9:12, 4, 1)
     @test a[CartesianIndices((1:2,1:2)),1] == [1 5; 2 6]
+    @test getindex_count(a) == 10
     # Test bitmask indexing
     m = falses(4, 5, 1)
     m[2, [1,2,3,5], 1] .= true
@@ -60,7 +59,8 @@ function test_getindex(a)
     @test a[[3, 5, 8]] == [3, 5, 8]
     @test a[2:4:14] == [2, 6, 10, 14]
     # Test that readblock was called exactly onces for every getindex
-    @test getindex_count(a) == 18
+    @test a[2:2:4, 1:2:5] == [2 10 18; 4 12 20]
+    @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
     @testset "allow_scalar" begin
         DiskArrays.allow_scalar(false)
         @test_throws ErrorException a[2, 3, 1]

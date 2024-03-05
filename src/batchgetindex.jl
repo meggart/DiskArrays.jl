@@ -203,7 +203,13 @@ end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::SubRanges) where N
     process_index(findall(i),cs,cr)
 end
-function process_index(i::StepRange{<:Integer}, cs, ::ChunkStrategy{CanStepRange})
+function process_index(i::StepRange{<:Integer}, cs, ::ChunkRead{CanStepRange})
+    DiskIndex((length(i),), (length(i),), ([(Colon(),)],), ([(Colon(),)],), ([(i,)],)), Base.tail(cs)
+end
+function process_index(i::StepRange{<:Integer}, cs, ::SubRanges{CanStepRange})
+    DiskIndex((length(i),), (length(i),), ([(Colon(),)],), ([(Colon(),)],), ([(i,)],)), Base.tail(cs)
+end
+function process_index(i::StepRange{<:Integer}, cs, ::NoBatch{CanStepRange})
     DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{<:CartesianIndex{N},M}, cs, ::Union{ChunkRead,SubRanges}) where {N,M}

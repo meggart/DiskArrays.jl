@@ -90,14 +90,14 @@ end
     )
 end
 
-function _resolve_indices(cs, i, indices_pre::DiskIndex, nb)
+function _resolve_indices(cs, i, indices_pre::DiskIndex, nb::ChunkStrategy)
     inow = first(i)
     indices_new, cs_rem = process_index(inow, cs, nb)
     _resolve_indices(cs_rem, Base.tail(i), merge_index(indices_pre,indices_new), nb)
 end
-_resolve_indices(::Tuple{}, ::Tuple{}, indices::DiskIndex, nb) = indices
+_resolve_indices(::Tuple{}, ::Tuple{}, indices::DiskIndex, nb::ChunkStrategy) = indices
 #No dimension left in array, only singular indices allowed
-function _resolve_indices(::Tuple{}, i, indices_pre::DiskIndex, nb)
+function _resolve_indices(::Tuple{}, i, indices_pre::DiskIndex, nb::ChunkStrategy)
     inow = first(i)
     (length(inow) == 1 && only(inow) == 1) || throw(ArgumentError("Trailing indices must be 1"))
     indices_new = DiskIndex(size(inow),(),size(inow),(),())
@@ -105,7 +105,7 @@ function _resolve_indices(::Tuple{}, i, indices_pre::DiskIndex, nb)
     _resolve_indices((), Base.tail(i), indices, nb)
 end
 #Still dimensions left, but no indices available
-function _resolve_indices(cs, ::Tuple{}, indices_pre::DiskIndex, nb) 
+function _resolve_indices(cs, ::Tuple{}, indices_pre::DiskIndex, nb::ChunkStrategy) 
     csnow = first(cs)
     arraysize_from_chunksize(csnow) == 1 || throw(ArgumentError("Indices can only be omitted for trailing singleton dimensions"))
     indices_new = add_dimension_index(nb)

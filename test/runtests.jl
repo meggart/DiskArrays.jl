@@ -42,28 +42,32 @@ function test_getindex(a)
     @test a[2, 3, 1, 1] == 10
     @test a[:, 1] == [1, 2, 3, 4]
     @test a[1:2, 1:2, 1, 1] == [1 5; 2 6]
-    @test a[2:2:4, 1:2:5] == [2 10 18; 4 12 20]
     @test a[end:-1:1, 1, 1] == [4, 3, 2, 1]
-    @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
     @test a[2, 3, 1, 1:1] == [10]
     @test a[2, 3, 1, [1], [1]] == fill(10, 1, 1)
     @test a[:, 3, 1, [1]] == reshape(9:12, 4, 1)
+    @test a[CartesianIndices((1:2,1:2)),1] == [1 5; 2 6]
+    @test getindex_count(a) == 10
     # Test bitmask indexing
     m = falses(4, 5, 1)
     m[2, [1,2,3,5], 1] .= true
     @test a[m] == [2, 6, 10, 18]
     # Test linear indexing
+    @test a[:] == 1:20
     @test a[11:15] == 11:15
     @test a[20:-1:9] == 20:-1:9
     @test a[[3, 5, 8]] == [3, 5, 8]
     @test a[2:4:14] == [2, 6, 10, 14]
     # Test that readblock was called exactly onces for every getindex
-    @test getindex_count(a) == 16
+    @test a[2:2:4, 1:2:5] == [2 10 18; 4 12 20]
+    @test a[[1, 3, 4], [1, 3], 1] == [1 9; 3 11; 4 12]
     @testset "allow_scalar" begin
         DiskArrays.allow_scalar(false)
         @test_throws ErrorException a[2, 3, 1]
+        @test_throws ErrorException a[5]
         DiskArrays.allow_scalar(true)
         @test a[2, 3, 1] == 10
+        @test a[5] == 5
     end
 end
 
@@ -287,13 +291,23 @@ end
 end
 
 @testset "AbstractDiskArray getindex" begin
-    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1))
-    test_getindex(a)
+    for bs in (DiskArrays.ChunkRead,DiskArrays.SubRanges)
+        for sr in (DiskArrays.CanStepRange(), DiskArrays.NoStepRange())
+            for ds in (0.5,1.0)
+                a = AccessCountDiskArray(reshape(1:20, 4, 5, 1),batchstrategy=bs(sr,ds))
+                test_getindex(a)
+            end
+        end
+    end
 end
 
 @testset "AbstractDiskArray setindex" begin
-    a = AccessCountDiskArray(zeros(Int, 4, 5, 1))
-    test_setindex(a)
+    for bs in (DiskArrays.ChunkRead,DiskArrays.SubRanges)
+        for sr in (DiskArrays.CanStepRange, DiskArrays.NoStepRange)
+            a = AccessCountDiskArray(zeros(Int, 4, 5, 1),batchstrategy=bs(sr,0.5))
+            test_setindex(a)
+        end
+    end
 end
 
 @testset "Zerodimensional" begin
@@ -449,6 +463,29 @@ end
     @test @inferred a1[:,CartesianIndex.([(1,2),(5,6),(2,6)])] ==  data[:,CartesianIndex.([(1,2),(5,6),(2,6)])]
 end
 
+
+@testset "Alignment of temporary and output arrays" begin
+    a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
+    i = (1:3,:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :identical
+    i = (1,:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    i = ([1,3],:,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :noalign
+    i = (1:3,:)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    i = (1:3,:,:,1,1)
+    di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
+    @test DiskArrays.output_aliasing(di) == :identical
+
+
+end
+
+
 @testset "Getindex/Setindex with vectors" begin
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]
@@ -501,6 +538,8 @@ end
     u = UnchunkedDiskArray(rand(275,305,36))
     @test u[i,1,1][1] == u[findfirst(i),1,1]
 end
+
+
 
 @testset "Vector getindex strategies" begin
     using DiskArrays: NoStepRange, CanStepRange

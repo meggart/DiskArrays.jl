@@ -86,8 +86,8 @@ function is_sparse_index(ids; density_threshold = 0.5)
 end
 
 function process_index(i, cs, strategy::Union{ChunkRead,SubRanges})
-    outsize, tempsize, outinds,tempinds,datainds,cs = process_index(i,cs, NoBatch(strategy))
-    outsize, tempsize, ([outinds],), ([tempinds],), ([datainds],), cs
+    ii,cs = process_index(i,cs, NoBatch(strategy))
+    DiskIndex(ii.output_size, ii.temparray_size, ([ii.output_indices],), ([ii.temparray_indices],), ([ii.data_indices],)), cs
 end
 
 
@@ -111,7 +111,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, ::ChunkRead) where N
         push!(tempinds, (tempind,))
         maxtempind = max(maxtempind,maximum(tempind))
     end
-    size(i), ((maxtempind),), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
+    DiskIndex(size(i), ((maxtempind),), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
 end
 
 function find_subranges_sorted(inds,allow_steprange=false)
@@ -150,7 +150,11 @@ function find_subranges_sorted(inds,allow_steprange=false)
             end
         end
     end
-    push!(rangelist,inds[current_base]:last(inds))
+    if current_step == 1 || current_step == 0
+        push!(rangelist,inds[current_base]:last(inds))
+    else
+        push!(rangelist,inds[current_base]:current_step:last(inds))
+    end
     push!(outputinds,current_base:length(inds))
     rangelist, outputinds
 end
@@ -174,8 +178,8 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
             (r,)
         end
         outinds = tuple.(outputinds)
-        tempsize = maximum(length(rangelist))
-        (length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
+        tempsize = maximum(length,rangelist)
+        DiskIndex((length(i),), (tempsize,), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
     else
         p = mysortperm(i)
         i_sorted = view(i,p)
@@ -190,7 +194,7 @@ function process_index(i::AbstractArray{<:Integer,N}, cs, s::SubRanges) where N
             (view(p,oi),)
         end
         tempsize = maximum(length(rangelist))
-        size(i), (tempsize,), (outinds,), (tempinds,), (datainds,), Base.tail(cs)
+        DiskIndex(size(i), (tempsize,), (outinds,), (tempinds,), (datainds,)), Base.tail(cs)
     end
 end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::ChunkRead) where N
@@ -199,8 +203,14 @@ end
 function process_index(i::AbstractArray{Bool,N}, cs, cr::SubRanges) where N
     process_index(findall(i),cs,cr)
 end
-function process_index(i::StepRange{<:Integer}, cs, ::ChunkStrategy{CanStepRange})
-    (length(i),), (length(i),), (Colon(),), (Colon(),), (i,), Base.tail(cs)
+function process_index(i::StepRange{<:Integer}, cs, ::ChunkRead{CanStepRange})
+    DiskIndex((length(i),), (length(i),), ([(Colon(),)],), ([(Colon(),)],), ([(i,)],)), Base.tail(cs)
+end
+function process_index(i::StepRange{<:Integer}, cs, ::SubRanges{CanStepRange})
+    DiskIndex((length(i),), (length(i),), ([(Colon(),)],), ([(Colon(),)],), ([(i,)],)), Base.tail(cs)
+end
+function process_index(i::StepRange{<:Integer}, cs, ::NoBatch{CanStepRange})
+    DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{<:CartesianIndex{N},M}, cs, ::Union{ChunkRead,SubRanges}) where {N,M}
     csnow, csrem = splitcs(i,cs)
@@ -217,14 +227,16 @@ function process_index(i::AbstractArray{<:CartesianIndex{N},M}, cs, ::Union{Chun
     for (cI,a) in chunksdict
         datamin,datamax = extrema(first,a)
         aa = first.(a)
-        tempind = aa .- datamin .+ oneunit(CartesianIndex{N})
+        tempind = map(aa) do ind
+            ind - datamin + oneunit(CartesianIndex{N})
+        end
         push!(outinds, tuple(map(last,a)))
         push!(datainds, range.(datamin.I,datamax.I))
         push!(tempinds, tuple(tempind))
         s = datamax.I .- datamin.I .+ 1
         tempsize = max.(s,tempsize)
     end
-    size(i), tempsize, (outinds,), (tempinds,), (datainds,), csrem
+    DiskIndex(size(i), tempsize, (outinds,), (tempinds,), (datainds,)), csrem
 end
 
 

@@ -75,7 +75,7 @@ function test_setindex(a)
     a[1, 1, 1] = 1
     a[1, 2] = 2
     a[1, 3, 1, 1] = 3
-    a[2, :] = [1, 2, 3, 4, 5]
+    a[2:2, :] = [1, 2, 3, 4, 5]
     a[3, 3:4, 1, 1] = [3, 4]
     # Test bitmask indexing
     m = falses(4, 5, 1)
@@ -468,21 +468,20 @@ end
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     i = (1:3,:,:)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    @test DiskArrays.output_aliasing(di) == :identical
+    @test DiskArrays.output_aliasing(di,3,3) == :identical
+    @test DiskArrays.output_aliasing(di,2,3) == :reshapeoutput
     i = (1,:,:)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    @test DiskArrays.output_aliasing(di,2,2) == :reshapeoutput
     i = ([1,3],:,:)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    @test DiskArrays.output_aliasing(di) == :noalign
+    @test DiskArrays.output_aliasing(di,3,3) == :noalign
     i = (1:3,:)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    @test DiskArrays.output_aliasing(di) == :reshapeoutput
+    @test DiskArrays.output_aliasing(di,2,2) == :reshapeoutput
     i = (1:3,:,:,1,1)
     di = DiskArrays.resolve_indices(a,i,DiskArrays.NoBatch())
-    @test DiskArrays.output_aliasing(di) == :identical
-
-
+    @test DiskArrays.output_aliasing(di,3,3) == :identical
 end
 
 

@@ -165,10 +165,10 @@ splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)
 
 #Determine wether output and temp array can a) be identical b) share memory through reshape or 
 # c) need to be allocated individually
-function output_aliasing(di::DiskIndex)
+function output_aliasing(di::DiskIndex,nda,ndv)
     if all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.temparray_indices) && 
         all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.output_indices)
-        if di.output_size == di.temparray_size
+        if di.output_size == di.temparray_size && nda == ndv
             return :identical
         else 
             return :reshapeoutput
@@ -229,7 +229,7 @@ function getindex_disk_nobatch!(out,a,i)
     indices = resolve_indices(a, i, NoBatch(allow_steprange(a), 1.0))
     #@debug output_size, temparray_size, output_indices, temparray_indices, data_indices
     outputarray = create_outputarray(out, a, indices.output_size)
-    outalias = output_aliasing(indices)
+    outalias = output_aliasing(indices,ndims(outputarray),ndims(a))
     if outalias === :identical
         readblock!(a, outputarray, indices.data_indices...)
     elseif outalias === :reshapeoutput
@@ -297,7 +297,7 @@ end
 
 function setindex_disk_nobatch!(a,v,i)
     indices = resolve_indices(a, i, NoBatch())
-    outalias = output_aliasing(indices)
+    outalias = output_aliasing(indices,ndims(a),ndims(v))
     if outalias === :identical
         writeblock!(a, v, indices.data_indices...)
     elseif outalias === :reshapeoutput

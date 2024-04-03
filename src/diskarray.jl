@@ -165,7 +165,7 @@ splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)
 
 #Determine wether output and temp array can a) be identical b) share memory through reshape or 
 # c) need to be allocated individually
-function output_aliasing(di::DiskIndex,nda,ndv)
+function output_aliasing(di::DiskIndex, ndims_dest, ndims_source)
     if all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.temparray_indices) && 
         all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.output_indices)
         if di.output_size == di.temparray_size && nda == ndv

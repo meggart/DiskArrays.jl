@@ -168,7 +168,7 @@ splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)
 function output_aliasing(di::DiskIndex, ndims_dest, ndims_source)
     if all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.temparray_indices) && 
         all(i->isa(i,Union{Int,AbstractUnitRange,Colon}),di.output_indices)
-        if di.output_size == di.temparray_size && nda == ndv
+        if di.output_size == di.temparray_size && ndims_dest == ndims_source
             return :identical
         else 
             return :reshapeoutput

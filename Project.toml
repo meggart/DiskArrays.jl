@@ -1,7 +1,7 @@
 name = "DiskArrays"
 uuid = "3c3547ce-8d99-4f5e-a174-61eb10b00ae3"
 authors = ["Fabian Gans <fgans@bgc-jena.mpg.de>"]
-version = "0.4.1"
+version = "0.4.2"
 
 [deps]
 LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"

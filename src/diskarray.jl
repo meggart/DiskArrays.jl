@@ -63,6 +63,7 @@ _need_batch(_, ::Tuple{}, _) = false
 
 need_batch_index(::Union{Integer,UnitRange,Colon}, cs, _) = false, Base.tail(cs)
 need_batch_index(i::CartesianIndices{N}, cs, _) where N = false, last(splitcs(i, cs))
+need_batch_index(i::CartesianIndex{N}, cs, _) where N = false, last(splitcs(i,cs))
 need_batch_index(::StepRange, cs, ::ChunkStrategy{CanStepRange}) = false, Base.tail(cs)
 function need_batch_index(i, cs, batchstrat)
     csnow, csrem = splitcs(i, cs)
@@ -159,6 +160,7 @@ end
 splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
 splitcs(i::AbstractArray{Bool}, cs) = splitcs(size(i), (), cs)
 splitcs(i::CartesianIndices, cs) = splitcs(i.indices, (), cs)
+splitcs(i::CartesianIndex, cs) = splitcs(i.I,(),cs)
 splitcs(_, cs) = (first(cs),), Base.tail(cs)
 splitcs(si, csnow, csrem) = splitcs(Base.tail(si), (csnow..., first(csrem)), Base.tail(csrem))
 splitcs(::Tuple{}, csnow, csrem) = (csnow, csrem)

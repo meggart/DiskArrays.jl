@@ -93,6 +93,8 @@ function test_setindex(a)
     a[[2, 4], 1:2, 1] = [1 2; 5 6]
     @test trueparent(a)[[2, 4], 1:2, 1] == [1 2; 5 6]
     @test setindex_count(a) == 8
+    a[CartesianIndex(1,1,1)] = -10
+    @test trueparent(a)[1,1,1] == -10
 end
 
 function test_view(a)

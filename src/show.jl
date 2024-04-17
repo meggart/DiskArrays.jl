@@ -15,6 +15,6 @@ function _show(io, mime, A)
     print(io, nameof(typeof(haschunks(A))))
     if haschunks(A) isa Chunked
         print(io, ": ")
-        show(io, mime, eachchunk(A))
+        show(io, mime, (map(c->length.(c),eachchunk(A).chunks)))
     end
 end

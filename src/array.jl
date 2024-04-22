@@ -69,7 +69,6 @@ function _copyto!(dest, Rdest, src, Rsrc)
 
     if any(==(0), size(Rdest))
         # This check is here to catch #168
-        println("Return dest")
         return dest
     end
     view(dest, Rdest) .= view(src, Rsrc)

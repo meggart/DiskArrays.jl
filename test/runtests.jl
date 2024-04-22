@@ -663,6 +663,12 @@ end
         copyto!(x, a_disk)
         @test x == a
         copyto!(x, CartesianIndices((1:3, 1:2)), a_disk, CartesianIndices((8:10, 8:9)))
+        # Test copyto! with zero length index
+        x_empty = Matrix{Int64}(undef, 0,2)
+        copyto!(x_empty, CartesianIndices((1:0, 1:2)), a_disk, CartesianIndices((8:7, 8:9)))
+        # copyto! with different length should throw an error
+        @test_throws ArgumentError copyto!(x, CartesianIndices((1:1, 1:2)), a_disk, CartesianIndices((4:6, 8:9)))
+
     end
 
     @test collect(reverse(a_disk)) == reverse(a)

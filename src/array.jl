@@ -61,8 +61,18 @@ function _copyto!(dest::AbstractArray, source::AbstractArray)
     reshape(dest, size(source)) .= source
     return dest
 end
-_copyto!(dest, Rdest, src, Rsrc) = view(dest, Rdest) .= view(src, Rsrc)
 
+function _copyto!(dest, Rdest, src, Rsrc)
+    if size(Rdest) != size(Rsrc)
+        throw(ArgumentError("source and destination must have same size (got $(size(Rsrc)) and $(size(Rdest)))"))
+    end
+
+    if isempty(Rdest)
+        # This check is here to catch #168
+        return dest
+    end
+    view(dest, Rdest) .= view(src, Rsrc)
+end
 # Use a view for lazy reverse
 _reverse(a, ::Colon) = _reverse(a, ntuple(identity, ndims(a)))
 _reverse(a, dims::Int) = _reverse(a, (dims,))

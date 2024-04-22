@@ -67,7 +67,7 @@ function _copyto!(dest, Rdest, src, Rsrc)
         throw(ArgumentError("source and destination must have same size (got $(size(Rsrc)) and $(size(Rdest)))"))
     end
 
-    if any(==(0), size(Rdest))
+    if isempty(Rdest)
         # This check is here to catch #168
         return dest
     end

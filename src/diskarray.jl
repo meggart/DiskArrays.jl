@@ -261,11 +261,12 @@ function transfer_results!(o, t, oi::Tuple{Vararg{Int}}, ti::Tuple{Vararg{Int}})
     o[oi...] = t[ti...]
     o
 end
-function transfer_results_write!(v, temparray, output_indices, temparray_indices)
+
+function transfer_results_write!(temparray, v, temparray_indices, output_indices)
     temparray[temparray_indices...] = view(v, output_indices...)
     temparray
 end
-function transfer_results_write!(v, t, oi::Tuple{Vararg{Int}}, ti::Tuple{Vararg{Int}})
+function transfer_results_write!(t, v, ti::Tuple{Vararg{Int}}, oi::Tuple{Vararg{Int}})
     t[ti...] = v[oi...]
     t
 end
@@ -291,7 +292,7 @@ function setindex_disk_batch!(a,v,i)
     mdata_indicess = MRArray(indices.data_indices)
     temparray = Array{eltype(a)}(undef, indices.temparray_size...)
     for (output_indices, temparray_indices, data_indices) in zip(moutput_indices, mtemparray_indices, mdata_indicess)
-        transfer_results_write!(v, temparray, output_indices, temparray_indices)
+        transfer_results_write!(temparray, v, temparray_indices, output_indices)
         vtemparray = maybeshrink(temparray, a, data_indices)
         writeblock!(a, vtemparray, data_indices...)
     end
@@ -306,9 +307,10 @@ function setindex_disk_nobatch!(a,v,i)
         temparray = reshape(v,indices.temparray_size)
         writeblock!(a, temparray, indices.data_indices...)
     else
-        temparray = Array{eltype(a)}(undef, indices.temparray_size...)
-        transfer_results_write!(v, temparray, indices.output_indices, indices.temparray_indices)
-        writeblock!(a, temparray, indices.data_indices...)
+        maybe_step_indices = map(getindex, indices.data_indices, indices.temparray_indices)
+        temparray = Array{eltype(a)}(undef, indices.output_size...)
+        transfer_results_write!(temparray, v, indices.output_indices, indices.output_indices)
+        writeblock!(a, temparray, maybe_step_indices...)
     end
 end
 

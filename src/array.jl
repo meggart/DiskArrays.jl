@@ -47,9 +47,8 @@ macro implement_array_methods(t)
 end
 
 # Use broadcast to copy to a new Array
-function _Array(a::AbstractArray{T,N}) where {T,N}
-    a[ntuple(_ -> :, Val{N}())...]
-end
+_Array(a::AbstractArray{T,N}) where {T,N} = a[ntuple(_ -> :, Val{N}())...]
+_Array(a::AbstractArray{T,0}) where {T} = fill(a[])
 
 # Use broadcast to copy
 function _copyto!(dest::AbstractArray{<:Any,N}, source::AbstractArray{<:Any,N}) where {N}

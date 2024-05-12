@@ -3,6 +3,7 @@ macro implement_array_methods(t)
     t = esc(t)
     quote
         Base.Array(a::$t) = $_Array(a)
+        Base.collect(a::$t) = $_Array(a)
         Base.copyto!(dest::$t, source::AbstractArray) = $_copyto!(dest, source)
         Base.copyto!(dest::AbstractArray, source::$t) = $_copyto!(dest, source)
         Base.copyto!(dest::$t, source::$t) = $_copyto!(dest, source)

@@ -47,9 +47,7 @@ end
 
 # Use broadcast to copy to a new Array
 function _Array(a::AbstractArray{T,N}) where {T,N}
-    dest = Array{T,N}(undef, size(a))
-    dest .= a
-    return dest
+    a[ntuple(_ -> :, Val{N}())...]
 end
 
 # Use broadcast to copy

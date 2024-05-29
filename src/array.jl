@@ -3,6 +3,7 @@ macro implement_array_methods(t)
     t = esc(t)
     quote
         Base.Array(a::$t) = $_Array(a)
+        Base.collect(a::$t) = $_Array(a)
         Base.copyto!(dest::$t, source::AbstractArray) = $_copyto!(dest, source)
         Base.copyto!(dest::AbstractArray, source::$t) = $_copyto!(dest, source)
         Base.copyto!(dest::$t, source::$t) = $_copyto!(dest, source)
@@ -46,11 +47,8 @@ macro implement_array_methods(t)
 end
 
 # Use broadcast to copy to a new Array
-function _Array(a::AbstractArray{T,N}) where {T,N}
-    dest = Array{T,N}(undef, size(a))
-    dest .= a
-    return dest
-end
+_Array(a::AbstractArray{T,N}) where {T,N} = a[ntuple(_ -> :, Val{N}())...]
+_Array(a::AbstractArray{T,0}) where {T} = fill(a[])
 
 # Use broadcast to copy
 function _copyto!(dest::AbstractArray{<:Any,N}, source::AbstractArray{<:Any,N}) where {N}

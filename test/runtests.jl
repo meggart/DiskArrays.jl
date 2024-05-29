@@ -526,13 +526,17 @@ end
     b[mask] = fill(2.0, 4)
     @test_broken setindex_count(b) == 4
 
-    b = AccessCountDiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1), batchstrategy=ChunkRead())
+    b = AccessCountDiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1), batchstrategy=DiskArrays.ChunkRead())
     b[1:2:4, 1] = [1, 2]
-    @test b.parent[1:2:4, 1] == [1, 2]
+    @test b.parent[1:3, 1] == [1, 0, 2]
+    @test getindex_count(b) == 1
+    @test setindex_count(b) == 1
 
-    b = AccessCountDiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1), batchstrategy=DiskArrays.SubRanges(CanStepRange(), 1.0))
+    b = AccessCountDiskArray(zeros(4, 5, 1); chunksize=(4, 1, 1), batchstrategy=DiskArrays.SubRanges(DiskArrays.CanStepRange(), 1.0))
     b[1:2:4, 1] = [1, 2]
-    @test b.parent[1:2:4, 1] == [1, 2]
+    @test b.parent[1:3, 1] == [1, 0, 2]
+    @test getindex_count(b) == 0
+    @test setindex_count(b) == 1
 
     #Test for #131
     a = reshape(1:75,5,5,3)

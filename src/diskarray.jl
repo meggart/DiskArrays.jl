@@ -293,12 +293,16 @@ function setindex_disk_batch!(a,v,i)
     for (output_indices, temparray_indices, data_indices) in zip(moutput_indices, mtemparray_indices, mdata_indicess)
         transfer_results_write!(v, temparray, output_indices, temparray_indices)
         vtemparray = maybeshrink(temparray, a, data_indices)
+        if any(ind->is_sparse_index(ind,density_threshold=1.0),temparray_indices)
+            readblock!(a, vtemparray, data_indices...)
+            transfer_results_write!(v, temparray, output_indices, temparray_indices)
+        end
         writeblock!(a, vtemparray, data_indices...)
     end
 end
 
 function setindex_disk_nobatch!(a,v,i)
-    indices = resolve_indices(a, i, NoBatch())
+    indices = resolve_indices(a, i, NoBatch(batchstrategy(a)))
     outalias = output_aliasing(indices,ndims(a),ndims(v))
     if outalias === :identical
         writeblock!(a, v, indices.data_indices...)
@@ -307,6 +311,13 @@ function setindex_disk_nobatch!(a,v,i)
         writeblock!(a, temparray, indices.data_indices...)
     else
         temparray = Array{eltype(a)}(undef, indices.temparray_size...)
+        if any(ind->is_sparse_index(ind,density_threshold=1.0),indices.temparray_indices)
+            #We have some sparse indexing pattern and are not in a batch situation, so
+            #we need to read before writing
+            #This check could be optimized away in some cases, when writing unit ranges etc, 
+            #but is probably not too expensive
+            readblock!(a, temparray, indices.data_indices...)
+        end
         transfer_results_write!(v, temparray, indices.output_indices, indices.temparray_indices)
         writeblock!(a, temparray, indices.data_indices...)
     end

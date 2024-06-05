@@ -32,8 +32,8 @@ implement methods for the following functions:
 
 ````julia
 Base.size(A::CustomDiskArray)
-readblock!(A::CustomDiskArray{T,N},aout,r::Vargarg{AbstractUnitRange,N})
-writeblock!(A::CustomDiskArray{T,N},ain,r::Vargarg{AbstractUnitRange,N})
+readblock!(A::CustomDiskArray{T,N},aout,r::Vararg{AbstractUnitRange,N})
+writeblock!(A::CustomDiskArray{T,N},ain,r::Vararg{AbstractUnitRange,N})
 ```` 
 
 Here `readblock!` will read a subset of array `A` in a hyper-rectangle defined by the unit ranges `r`. The results shall be written into `aout`. `writeblock!` should write the data given by `ain` into the (hyper-)rectangle of A defined by `r`

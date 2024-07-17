@@ -18,7 +18,7 @@ struct CachedDiskArray{T,N,A<:AbstractArray{T,N},C} <: AbstractDiskArray{T,N}
 end
 function CachedDiskArray(A::AbstractArray{T,N}; maxsize=1000) where {T,N}
     by(x) = sizeof(x) ÷ 1_000_000 # In Megabytes
-    CachedDiskArray(A, LRU{Tuple,Any}(; by, maxsize))
+    CachedDiskArray(A, LRU{ChunkIndex{N,OffsetChunks},OffsetArray{T,N,Array{T,N}}}(; by, maxsize))
 end
 
 Base.parent(A::CachedDiskArray) = A.parent
@@ -35,25 +35,20 @@ eachchunk(A::CachedDiskArray) = eachchunk(parent(A))
 function _readblock_cached!(A::CachedDiskArray{T,N}, data, I...) where {T,N}
     chunks = eachchunk(A)
     chunk_inds = findchunk.(chunks.chunks, I)
-    needed_chunks = chunks[chunk_inds...]
-
-    chunk_arrays = map(needed_chunks) do c
-        if haskey(A.cache, c)
-            A.cache[c]
-        else
-            chunk_data = Array{T,N}(undef, length.(c)...)
-            A.cache[c] = readblock!(parent(A), chunk_data, c...)
+    data_offset = OffsetArray(data,map(i->first(i)-1,I)...)
+    foreach(CartesianIndices(chunk_inds)) do ci
+        chunkindex = ChunkIndex(ci,offset=true)
+        chunk = get!(A.cache, chunkindex) do
+            res = parent(A)[chunkindex]
+            res
+        end
+        inner_indices = map(axes(chunk),axes(data_offset)) do ax1, ax2
+            max(first(ax1),first(ax2)):min(last(ax1),last(ax2))
+        end
+        for ii in CartesianIndices(inner_indices)
+            data_offset[ii] = chunk[ii]
         end
     end
-    out = ConcatDiskArray(chunk_arrays)
-
-    out_inds = map(I, first(needed_chunks)) do i, nc
-        i .- first(nc) .+ 1 
-    end
-
-    data .= view(out, out_inds...)
-
-    return data
 end
 
 """

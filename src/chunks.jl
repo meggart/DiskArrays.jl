@@ -272,8 +272,7 @@ haschunks(x) = Unchunked()
 
 struct OffsetChunks end
 struct OneBasedChunks end
-wrapchunk(::OneBasedChunks, x, _) = x
-wrapchunk(::OffsetChunks, x, inds) = OffsetArray(x, inds...)
+wrapchunk(x, inds) = OffsetArray(x, inds...)
 
 """
     ChunkIndex{N}
@@ -288,6 +287,9 @@ end
 function ChunkIndex(i::CartesianIndex; offset=false)
     return ChunkIndex(i, offset ? OffsetChunks() : OneBasedChunks())
 end
+"Removes the offset from a ChunkIndex"
+nooffset(i::ChunkIndex) = ChunkIndex(i.I, OneBasedChunks())
+
 ChunkIndex(i::Integer...; offset=false) = ChunkIndex(CartesianIndex(i); offset)
 
 """
@@ -336,6 +338,26 @@ function estimate_chunksize(s, si)
             return floor(Int, default_chunk_size[] * 1e6 / si / sbefore)
         end
     end
+    cs = clamp.(cs, 1, s)
     return GridChunks(s, cs)
 end
 
+
+
+abstract type ChunkTiledDiskArray{T,N} <: AbstractDiskArray{T,N} end
+Base.size(a::ChunkTiledDiskArray) = arraysize_from_chunksize.(eachchunk(a).chunks)
+function DiskArrays.readblock!(A::ChunkTiledDiskArray{T,N}, data, I...) where {T,N}
+    chunks = eachchunk(A)
+    chunk_inds = DiskArrays.findchunk.(chunks.chunks, I)
+    data_offset = OffsetArray(data, map(i -> first(i) - 1, I)...)
+    foreach(CartesianIndices(chunk_inds)) do ci
+        chunkindex = DiskArrays.ChunkIndex(ci, offset=true)
+        chunk = A[chunkindex]
+        inner_indices = map(axes(chunk), axes(data_offset)) do ax1, ax2
+            max(first(ax1), first(ax2)):min(last(ax1), last(ax2))
+        end
+        for ii in CartesianIndices(inner_indices)
+            data_offset[ii] = chunk[ii]
+        end
+    end
+end

@@ -346,12 +346,10 @@ macro implement_getindex(t)
     t = esc(t)
     quote
         Base.getindex(a::$t, i...) = getindex_disk(a, i...)
-
-        function Base.getindex(a::$t, i::ChunkIndex)
-            cs = eachchunk(a)
-            inds = cs[i.I]
-            return wrapchunk(i.chunktype, a[inds...], inds)
-        end
+        @inline Base.getindex(a::$t, i::ChunkIndex{<:Any,OneBasedChunks}) =
+            a[eachchunk(a)[i.I]...]
+        @inline Base.getindex(a::$t, i::ChunkIndex{<:Any,OffsetChunks}) =
+            wrapchunk(a[nooffset(i)], eachchunk(a)[i.I])
         function DiskArrays.ChunkIndices(a::$t; offset=false)
             return ChunkIndices(
                 map(s->1:s,size(eachchunk(a))), offset ? OffsetChunks() : OneBasedChunks()

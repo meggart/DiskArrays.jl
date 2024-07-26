@@ -73,11 +73,15 @@ subsetchunks(r, subs) = subsetchunks_fallback(r, subs)
 
 """
     subsetchunks(r, subs::AbstractVector{<:Integer})
+    subsetchunks(r, subs::BitVector)
 
 Identify chunks from indices which may be discontinuous.
 """
 function subsetchunks(r, subs::AbstractVector{<:Integer})
     return invoke(subsetchunks_fallback, Tuple{Any, Any}, r, sort(subs))
+end
+function subsetchunks(r, subs::BitVector)
+    return subsetchunks(r, findall(subs))
 end
 
 approx_chunksize(r::RegularChunks) = r.cs

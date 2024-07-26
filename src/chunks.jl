@@ -71,6 +71,15 @@ findchunk(r::RegularChunks, i::Int) = div(i + r.offset - 1, r.cs) + 1
 
 subsetchunks(r, subs) = subsetchunks_fallback(r, subs)
 
+"""
+    subsetchunks(r, subs::AbstractVector{<:Integer})
+
+Identify chunks from indices which may be discontinuous.
+"""
+function subsetchunks(r, subs::AbstractVector{<:Integer})
+    return invoke(subsetchunks_fallback, Tuple{Any, Any}, r, sort(subs))
+end
+
 approx_chunksize(r::RegularChunks) = r.cs
 grid_offset(r::RegularChunks) = r.offset
 max_chunksize(r::RegularChunks) = r.cs
@@ -341,8 +350,6 @@ function estimate_chunksize(s, si)
     cs = clamp.(cs, 1, s)
     return GridChunks(s, cs)
 end
-
-
 
 abstract type ChunkTiledDiskArray{T,N} <: AbstractDiskArray{T,N} end
 Base.size(a::ChunkTiledDiskArray) = arraysize_from_chunksize.(eachchunk(a).chunks)

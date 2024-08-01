@@ -259,7 +259,7 @@ end
     @test subsetchunks(r1, [28, 27, 19, 17, 10, 7]) == [1:3, 4:5, 6:6]
     @test subsetchunks(r1, [1, 2, 3]) == [1:3]
     @test subsetchunks(r1, [1, 2, 3, 10, 11]) == [1:3, 4:5]
-    @test_throws ArgumentError subsetchunks(r1, [3, 4, 5, 1])
+    @test subsetchunks(r1, [3, 4, 11, 13, 1]) == [1:2,3:4,5:5]
 
     r2 = IrregularChunks(; chunksizes=[3, 3, 4, 3, 3, 4])
     @test subsetchunks(r2, 1:20) == r2
@@ -704,10 +704,10 @@ end
 
     @test collect(reverse(a_disk)) == reverse(a)
     @test reverse(view(a_disk, :, 1)) == reverse(a[:, 1])
-    @test_broken reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
+    @test reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
     # ERROR: ArgumentError: Can only subset chunks for sorted indices
-    @test_broken reverse(view(a_disk, :, 1), 5) == reverse(a[:, 1], 5)
-    @test_broken reverse(view(a_disk, :, 1), 5, 10) == reverse(a[:, 1], 5, 10)
+    @test reverse(view(a_disk, :, 1), 5) == reverse(a[:, 1], 5)
+    @test reverse(view(a_disk, :, 1), 5, 10) == reverse(a[:, 1], 5, 10)
     @test collect(reverse(a_disk)) == collect(reverse(a_disk; dims=:)) == 
         collect(reverse(a_disk; dims=(1, 2))) == reverse(a)
     @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)

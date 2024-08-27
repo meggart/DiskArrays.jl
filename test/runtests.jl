@@ -907,7 +907,20 @@ end
     @test getindex_count(A) == 0 
 end
 
+@testset "optimization for associative reductions" begin
+    A = rand(1:10,30,30)
+    DA = AccessCountDiskArray(A,chunksize=(2,2))
 
+    for fun in (sum, prod, maximum, minimum)
+        @test fun(A) == fun(DA)
+    end
+
+    Ab = rand(Bool,30,30)
+    DAb = AccessCountDiskArray(Ab,chunksize=(2,2))
+    for fun in (count, all, any)
+        @test fun(Ab) == fun(DAb)
+    end
+end
 
 # @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
 # inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]

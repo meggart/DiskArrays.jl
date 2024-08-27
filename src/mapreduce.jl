@@ -47,3 +47,14 @@ macro implement_mapreduce(t)
         end
     end
 end
+
+
+# optimized implementation for special cases
+
+for fname in [:sum,:prod,:count,:all,:any,:minimum,:maximum]
+    @eval function Base.$fname(v::AbstractDiskArray)
+        $fname(eachchunk(v)) do chunk
+            $fname(v[chunk...])
+        end
+    end
+end

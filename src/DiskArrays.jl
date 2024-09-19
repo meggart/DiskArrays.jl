@@ -49,19 +49,28 @@ macro implement_diskarray(t)
     end
 end
 
+# https://github.com/meggart/DiskArrays.jl/issues/175
+macro implement_diskarray_skip_zip(t)
+    # Need to do this for dispatch ambiguity
+    t = esc(t)
+    quote
+        @implement_getindex $t
+        @implement_setindex $t
+        @implement_broadcast $t
+        @implement_iteration $t
+        @implement_mapreduce $t
+        @implement_reshape $t
+        @implement_array_methods $t
+        @implement_permutedims $t
+        @implement_subarray $t
+        @implement_cat $t
+        @implement_show $t
+        @implement_generator $t
+    end
+end
+
 # We need to skip the `implement_zip` macro for dispatch
-@implement_getindex AbstractDiskArray
-@implement_setindex AbstractDiskArray
-@implement_broadcast AbstractDiskArray
-@implement_iteration AbstractDiskArray
-@implement_mapreduce AbstractDiskArray
-@implement_reshape AbstractDiskArray
-@implement_array_methods AbstractDiskArray
-@implement_permutedims AbstractDiskArray
-@implement_subarray AbstractDiskArray
-@implement_cat AbstractDiskArray
-@implement_generator AbstractDiskArray
-@implement_show AbstractDiskArray
+@implement_diskarray_skip_zip AbstractDiskArray
 
 #And we define the test types
 include("util/testtypes.jl")

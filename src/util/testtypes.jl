@@ -14,7 +14,7 @@ and optimise chunk access.
 `getindex_count(A)` and `setindex_count(A)` can be used to check the
 the counters.
 """
-struct AccessCountDiskArray{T,N,A<:AbstractArray{T,N},RS} <: AbstractArray{T,N}
+struct AccessCountDiskArray{T,N,A<:AbstractArray{T,N},RS} <: DiskArrays.AbstractDiskArray{T,N}
     getindex_log::Vector{Any}
     setindex_log::Vector{Any}
     parent::A
@@ -28,7 +28,7 @@ AccessCountDiskArray(a; chunksize=size(a),batchstrategy=DiskArrays.ChunkRead(Dis
 Base.size(a::AccessCountDiskArray) = size(a.parent)
 
 # Apply the all in one macro rather than inheriting
-DiskArrays.@implement_diskarray AccessCountDiskArray
+DiskArrays.@implement_diskarray_skip_zip AccessCountDiskArray
 
 DiskArrays.haschunks(::AccessCountDiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::AccessCountDiskArray) = DiskArrays.GridChunks(a, a.chunksize)

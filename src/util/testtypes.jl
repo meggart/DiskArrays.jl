@@ -28,7 +28,6 @@ AccessCountDiskArray(a; chunksize=size(a),batchstrategy=DiskArrays.ChunkRead(Dis
 Base.size(a::AccessCountDiskArray) = size(a.parent)
 
 # Apply the all in one macro rather than inheriting
-DiskArrays.@implement_diskarray_skip_zip AccessCountDiskArray
 
 DiskArrays.haschunks(::AccessCountDiskArray) = DiskArrays.Chunked()
 DiskArrays.eachchunk(a::AccessCountDiskArray) = DiskArrays.GridChunks(a, a.chunksize)

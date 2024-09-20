@@ -41,12 +41,7 @@ function DiskZip(As::AbstractArray...)
         return DiskZip(rechunked)
     end
 end
-# For now we only allow zip on exact same-sized arrays
-function DiskZip(As...)
-    throw(
-        ArgumentError("zip on disk arrays only works with other same-sized AbstractArray")
-    )
-end
+# # For now we only allow zip on exact same-sized arrays
 
 # Collect zipped disk arrays in the right order
 function Base.collect(dz::DiskZip)
@@ -65,7 +60,7 @@ function Base.zip(A1::AbstractDiskArray, A2::AbstractDiskArray, As::AbstractArra
     return DiskZip(A1, A2, As...)
 end
 function Base.zip(A1::AbstractDiskArray, A2::AbstractArray, As::AbstractArray...)
-    return DiskZip(A1, A1, As...)
+    return DiskZip(A1, A2, As...)
 end
 function Base.zip(A1::AbstractArray, A2::AbstractDiskArray, As::AbstractArray...)
     return DiskZip(A1, A2, As...)

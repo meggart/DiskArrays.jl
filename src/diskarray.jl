@@ -144,7 +144,8 @@ end
 function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) where {N}
     csnow, csrem = splitcs(i, cs)
     s = arraysize_from_chunksize.(csnow)
-    cindmin, cindmax = extrema(view(CartesianIndices(s), i))
+    v = view(CartesianIndices(s), i)
+    cindmin, cindmax = extrema(v;init=(CartesianIndex(),CartesianIndex()))
     indmin, indmax = cindmin.I, cindmax.I
     tempsize = indmax .- indmin .+ 1
     tempoffset = cindmin - oneunit(cindmin)
@@ -157,7 +158,7 @@ function process_index(i::CartesianIndices{N}, cs, ::NoBatch) where {N}
     cols = map(_ -> Colon(), i.indices)
     DiskIndex(length.(i.indices), length.(i.indices), cols, cols, i.indices), csrem
 end
-splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(first(i).I, (), cs)
+splitcs(i::AbstractArray{<:CartesianIndex}, cs) = isempty(i) ? splitcs((), cs) : splitcs(first(i).I, (), cs)
 splitcs(i::AbstractArray{Bool}, cs) = splitcs(size(i), (), cs)
 splitcs(i::CartesianIndices, cs) = splitcs(i.indices, (), cs)
 splitcs(i::CartesianIndex, cs) = splitcs(i.I,(),cs)

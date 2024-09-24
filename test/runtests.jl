@@ -36,6 +36,11 @@ end
     @test a[CartesianIndex(1,2,3)] == 15
 end
 
+@testset "getindex with empty array" begin
+    a = AccessCountDiskArray(reshape(1:24,2,3,4),chunksize=(2,2,2))
+    @test a[Int[]] == Float64[]
+end
+
 function test_getindex(a)
     @test a[2, 3, 1] == 10
     @test a[2, 3] == 10

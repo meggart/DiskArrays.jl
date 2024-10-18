@@ -36,6 +36,11 @@ end
     @test a[CartesianIndex(1,2,3)] == 15
 end
 
+@testset "getindex with empty array" begin
+    a = AccessCountDiskArray(reshape(1:24,2,3,4),chunksize=(2,2,2))
+    @test a[Int[]] == Float64[]
+end
+
 function test_getindex(a)
     @test a[2, 3, 1] == 10
     @test a[2, 3] == 10
@@ -491,6 +496,13 @@ end
     a = AccessCountDiskArray(reshape(1:20, 4, 5, 1); chunksize=(4, 1, 1))
     @test a[:, [1, 4], 1] == trueparent(a)[:, [1, 4], 1]
     @test getindex_count(a) == 1
+
+    #Test with empty vectors
+    @test a[Int[]] == Int[]
+    @test a[:,Int[],:] == zeros(Int,4,0,1)
+    @test a[Int[],:,:] == zeros(Int,0,5,1)
+    @test getindex_count(a) == 1
+
     coords = CartesianIndex.([(1, 1, 1), (3, 1, 1), (2, 4, 1), (4, 4, 1)])
     @test a[coords] == trueparent(a)[coords]
     @test_broken getindex_count(a) == 4

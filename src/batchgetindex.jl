@@ -60,6 +60,7 @@ end
 
 function has_chunk_gap(cs,ids::AbstractVector{<:Integer})
     #Find largest jump in indices
+    isempty(ids) && return false
     minind,maxind = extrema(ids)
     maxind - minind > first(cs)
 end
@@ -67,7 +68,9 @@ end
 has_chunk_gap(cs,ids) = true
 
 #Compute the number of possible indices in the hyperrectangle
-span(v::AbstractArray{<:Integer}) = 1 -(-(extrema(v)...))
+function span(v::AbstractArray{<:Integer})
+    iszero(length(v)) ? 0 : 1 -(-(extrema(v)...))
+end
 function span(v::AbstractArray{CartesianIndex{N}}) where N
     minind,maxind = extrema(v)
     prod((maxind-minind+oneunit(minind)).I)

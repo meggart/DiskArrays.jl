@@ -238,13 +238,13 @@ function getindex_disk_nobatch!(out,a,i)
     outputarray = create_outputarray(out, a, indices.output_size)
     outalias = output_aliasing(indices,ndims(outputarray),ndims(a))
     if outalias === :identical
-        readblock!(a, outputarray, indices.data_indices...)
+        readblock_sizecheck!(a, outputarray, indices.data_indices...)
     elseif outalias === :reshapeoutput
         temparray = reshape(outputarray,indices.temparray_size)
-        readblock!(a, temparray, indices.data_indices...)
+        readblock_sizecheck!(a, temparray, indices.data_indices...)
     else
         temparray = Array{eltype(a)}(undef, indices.temparray_size...)
-        readblock!(a, temparray, indices.data_indices...)
+        readblock_sizecheck!(a, temparray, indices.data_indices...)
         transfer_results!(outputarray, temparray, indices.output_indices, indices.temparray_indices)
     end
     outputarray
@@ -302,7 +302,7 @@ function setindex_disk_batch!(a,v,i)
             readblock!(a, vtemparray, data_indices...)
             transfer_results_write!(v, temparray, output_indices, temparray_indices)
         end
-        writeblock!(a, vtemparray, data_indices...)
+        writeblock_sizecheck!(a, vtemparray, data_indices...)
     end
 end
 
@@ -310,10 +310,10 @@ function setindex_disk_nobatch!(a,v,i)
     indices = resolve_indices(a, i, NoBatch(batchstrategy(a)))
     outalias = output_aliasing(indices,ndims(a),ndims(v))
     if outalias === :identical
-        writeblock!(a, v, indices.data_indices...)
+        writeblock_sizecheck!(a, v, indices.data_indices...)
     elseif outalias === :reshapeoutput
         temparray = reshape(v,indices.temparray_size)
-        writeblock!(a, temparray, indices.data_indices...)
+        writeblock_sizecheck!(a, temparray, indices.data_indices...)
     else
         temparray = Array{eltype(a)}(undef, indices.temparray_size...)
         if any(ind->is_sparse_index(ind,density_threshold=1.0),indices.temparray_indices)
@@ -324,7 +324,21 @@ function setindex_disk_nobatch!(a,v,i)
             readblock!(a, temparray, indices.data_indices...)
         end
         transfer_results_write!(v, temparray, indices.output_indices, indices.temparray_indices)
-        writeblock!(a, temparray, indices.data_indices...)
+        writeblock_sizecheck!(a, temparray, indices.data_indices...)
+    end
+end
+
+"Like `readblock!`, but only exectued when data size to read is not empty"
+function readblock_sizecheck!(x,y,i...)
+    if length(y) > 0
+        readblock!(x,y,i...)
+    end
+end
+
+"Like `writeblock!`, but only exectued when data size to read is not empty"
+function writeblock_sizecheck!(x,y,i...)
+    if length(y) > 0
+        writeblock!(x,y,i...)
     end
 end
 

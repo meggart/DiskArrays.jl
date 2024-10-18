@@ -501,7 +501,7 @@ end
     @test a[Int[]] == Int[]
     @test a[:,Int[],:] == zeros(Int,4,0,1)
     @test a[Int[],:,:] == zeros(Int,0,5,1)
-    @test getindex_count(a) == 4
+    @test getindex_count(a) == 1
 
     coords = CartesianIndex.([(1, 1, 1), (3, 1, 1), (2, 4, 1), (4, 4, 1)])
     @test a[coords] == trueparent(a)[coords]

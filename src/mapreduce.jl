@@ -47,3 +47,20 @@ macro implement_mapreduce(t)
         end
     end
 end
+
+
+# Implementation for special cases and if fallback breaks in future julia versions
+
+for fname in [:sum,:prod,:all,:any,:minimum,:maximum]
+    @eval function Base.$fname(f::Function, v::AbstractDiskArray)
+        $fname(eachchunk(v)) do chunk
+            $fname(f,v[chunk...])
+        end
+    end
+end
+
+function Base.count(f,v::AbstractDiskArray)
+    sum(eachchunk(v)) do chunk
+        count(f,v[chunk...])
+    end
+end

@@ -121,9 +121,11 @@ function test_reductions(af)
     for f in (
         minimum,
         maximum,
+        prod,
         sum,
         (i, args...; kwargs...) -> all(j -> j > 0.1, i, args...; kwargs...),
         (i, args...; kwargs...) -> any(j -> j < 0.1, i, args...; kwargs...),
+        (i, args...; kwargs...) -> count(j -> j < 0.1, i, args...; kwargs...),
         (i, args...; kwargs...) -> mapreduce(x -> 2 * x, +, i, args...; kwargs...),
     )
         a = af(data)
@@ -336,6 +338,19 @@ import Statistics: mean
 @testset "Reductions" begin
     a = data -> AccessCountDiskArray(data; chunksize=(5, 4, 2))
     test_reductions(a)
+
+    @testset "Early stopping for all and any" begin
+        a = trues(10)
+        b = falses(10)
+        da = AccessCountDiskArray(a, chunksize=(2,))
+        db = AccessCountDiskArray(b, chunksize=(2,))
+        @test any(da)
+        @test any(==(true),da)
+        @test !all(db)
+        @test !all(==(true),db)
+        @test getindex_count(da)==2
+        @test getindex_count(db)==2
+    end
 end
 
 @testset "Broadcast" begin
@@ -919,10 +934,3 @@ end
     @test getindex_count(A) == 0 
 end
 
-
-
-# @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
-# inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
-# readranges, offsets = find_subranges_sorted(inds,false)
-# @test readranges == [1:1, 3:3, 5:7, 10:10, 13:13, 16:16, 19:20]
-# @test offsets == [[1:3], [4:4], [5:5,6:7,8:8], [9:9], [10:10], [11:12], [13:13,14:14]]

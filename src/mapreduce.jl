@@ -49,7 +49,7 @@ macro implement_mapreduce(t)
 end
 
 
-# Implementation for special cases for special cases and if fallback breaks in future julia versions
+# Implementation for special cases and if fallback breaks in future julia versions
 
 for fname in [:sum,:prod,:all,:any,:minimum,:maximum]
     @eval function Base.$fname(f::Function, v::AbstractDiskArray)

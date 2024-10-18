@@ -52,7 +52,7 @@ end
 # Implementation for special cases for special cases and if fallback breaks in future julia versions
 
 for fname in [:sum,:prod,:all,:any,:minimum,:maximum]
-    @eval function Base.$fname(f, v::AbstractDiskArray)
+    @eval function Base.$fname(f::Function, v::AbstractDiskArray)
         $fname(eachchunk(v)) do chunk
             $fname(f,v[chunk...])
         end

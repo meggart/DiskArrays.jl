@@ -333,6 +333,19 @@ import Statistics: mean
 @testset "Reductions" begin
     a = data -> AccessCountDiskArray(data; chunksize=(5, 4, 2))
     test_reductions(a)
+
+    @testset "Early stopping for all and any" begin
+        a = trues(10)
+        b = falses(10)
+        da = AccessCountDiskArray(a, chunksize=(2,))
+        db = AccessCountDiskArray(b, chunksize=(2,))
+        @test any(da)
+        @test any(==(true),da)
+        @test !all(db)
+        @test !all(==(true),db)
+        @test getindex_count(da)==2
+        @test getindex_count(db)==2
+    end
 end
 
 @testset "Broadcast" begin

@@ -129,7 +129,7 @@ function process_index(i::AbstractUnitRange{<:Integer}, cs, ::NoBatch)
     DiskIndex((length(i),), (length(i),), (Colon(),), (Colon(),), (i,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{<:Integer}, cs, ::NoBatch)
-    indmin, indmax = extrema(i)
+    indmin, indmax = isempty(i) ? (1,0) : extrema(i)
     DiskIndex(size(i), ((indmax - indmin + 1),), map(_->Colon(),size(i)), ((i .- (indmin - 1)),), (indmin:indmax,)), Base.tail(cs)
 end
 function process_index(i::AbstractArray{Bool,N}, cs, ::NoBatch) where {N}

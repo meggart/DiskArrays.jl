@@ -116,9 +116,11 @@ function test_reductions(af)
     for f in (
         minimum,
         maximum,
+        prod,
         sum,
         (i, args...; kwargs...) -> all(j -> j > 0.1, i, args...; kwargs...),
         (i, args...; kwargs...) -> any(j -> j < 0.1, i, args...; kwargs...),
+        (i, args...; kwargs...) -> count(j -> j < 0.1, i, args...; kwargs...),
         (i, args...; kwargs...) -> mapreduce(x -> 2 * x, +, i, args...; kwargs...),
     )
         a = af(data)
@@ -907,23 +909,3 @@ end
     @test getindex_count(A) == 0 
 end
 
-@testset "optimization for associative reductions" begin
-    A = rand(1:10,30,30)
-    DA = AccessCountDiskArray(A,chunksize=(2,2))
-
-    for fun in (sum, prod, maximum, minimum)
-        @test fun(A) == fun(DA)
-    end
-
-    Ab = rand(Bool,30,30)
-    DAb = AccessCountDiskArray(Ab,chunksize=(2,2))
-    for fun in (count, all, any)
-        @test fun(Ab) == fun(DAb)
-    end
-end
-
-# @test offsets    == [[1:1,2:3,4:4],[5:5,6:6,7:7],[8:8,9:9]]
-# inds = [1,1,1,3,5,6,6,7,10,13,16,16,19,20]
-# readranges, offsets = find_subranges_sorted(inds,false)
-# @test readranges == [1:1, 3:3, 5:7, 10:10, 13:13, 16:16, 19:20]
-# @test offsets == [[1:3], [4:4], [5:5,6:7,8:8], [9:9], [10:10], [11:12], [13:13,14:14]]

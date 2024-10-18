@@ -162,7 +162,7 @@ function process_index(i::CartesianIndices{N}, cs, ::NoBatch) where {N}
     cols = map(_ -> Colon(), i.indices)
     DiskIndex(length.(i.indices), length.(i.indices), cols, cols, i.indices), csrem
 end
-splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(one(eltype(i)).I, (), cs)
+splitcs(i::AbstractArray{<:CartesianIndex}, cs) = splitcs(oneunit(eltype(i)).I, (), cs)
 splitcs(i::AbstractArray{Bool}, cs) = splitcs(size(i), (), cs)
 splitcs(i::CartesianIndices, cs) = splitcs(i.indices, (), cs)
 splitcs(i::CartesianIndex, cs) = splitcs(i.I,(),cs)

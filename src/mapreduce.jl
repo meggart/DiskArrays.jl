@@ -4,7 +4,7 @@
 macro implement_mapreduce(t)
     t = esc(t)
     quote
-        function Base._mapreduce(f, op, v::$t)
+        function Base._mapreduce(f, op, ::IndexCartesian, v::$t)
             mapreduce(op, eachchunk(v)) do cI
                 a = v[to_ranges(cI)...]
                 mapreduce(f, op, a)

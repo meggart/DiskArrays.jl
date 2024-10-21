@@ -266,7 +266,7 @@ end
     @test subsetchunks(r1, [28, 27, 19, 17, 10, 7]) == [1:3, 4:5, 6:6]
     @test subsetchunks(r1, [1, 2, 3]) == [1:3]
     @test subsetchunks(r1, [1, 2, 3, 10, 11]) == [1:3, 4:5]
-    @test_throws ArgumentError subsetchunks(r1, [3, 4, 5, 1])
+    @test subsetchunks(r1, [3, 4, 11, 13, 1]) == [1:2,3:4,5:5]
 
     r2 = IrregularChunks(; chunksizes=[3, 3, 4, 3, 3, 4])
     @test subsetchunks(r2, 1:20) == r2
@@ -577,6 +577,25 @@ end
     i = Bool[1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1]
     u = UnchunkedDiskArray(rand(275,305,36))
     @test u[i,1,1][1] == u[findfirst(i),1,1]
+
+    # Test for #180
+    test_arr = rand(100,100,100)
+    a180 = AccessCountDiskArray(test_arr; chunksize=(10,10,20))
+
+    idx = [rand(1:100)]
+    @test all(a180[idx, :, :] .== test_arr[idx, :, :])
+    @test all(a180[:, idx, :] .== test_arr[:, idx, :])
+    @test all(a180[:, :, idx] .== test_arr[:, :, idx])
+
+    sel = findall(rand(100) .<= 0.5)
+    @test all(a180[:, sel, :] .== test_arr[:, sel, :])
+    @test all(a180[sel, :, :] .== test_arr[sel, :, :])
+    @test all(a180[sel, :, sel] .== test_arr[sel, :, sel])
+
+    bit_sel = rand(100) .> 0.5
+    @test all(a180[bit_sel, :, :] .== test_arr[bit_sel, :, :])
+    @test all(a180[:, bit_sel, :] .== test_arr[:, bit_sel, :])
+    @test all(a180[:, bit_sel, bit_sel] .== test_arr[:, bit_sel, bit_sel])
 end
 
 
@@ -712,10 +731,10 @@ end
 
     @test collect(reverse(a_disk)) == reverse(a)
     @test reverse(view(a_disk, :, 1)) == reverse(a[:, 1])
-    @test_broken reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
+    @test reverse(view(a_disk, :, 1), 1) == reverse(a[:, 1], 1)
     # ERROR: ArgumentError: Can only subset chunks for sorted indices
-    @test_broken reverse(view(a_disk, :, 1), 5) == reverse(a[:, 1], 5)
-    @test_broken reverse(view(a_disk, :, 1), 5, 10) == reverse(a[:, 1], 5, 10)
+    @test reverse(view(a_disk, :, 1), 5) == reverse(a[:, 1], 5)
+    @test reverse(view(a_disk, :, 1), 5, 10) == reverse(a[:, 1], 5, 10)
     @test collect(reverse(a_disk)) == collect(reverse(a_disk; dims=:)) == 
         collect(reverse(a_disk; dims=(1, 2))) == reverse(a)
     @test collect(reverse(a_disk; dims=2)) == reverse(a; dims=2)

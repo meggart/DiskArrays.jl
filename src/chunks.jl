@@ -71,6 +71,36 @@ findchunk(r::RegularChunks, i::Int) = div(i + r.offset - 1, r.cs) + 1
 
 subsetchunks(r, subs) = subsetchunks_fallback(r, subs)
 
+"""
+    chunk_rle(chunks,vec)
+
+Computes the run length of which chunk is accessed how many times consecutively to determine
+
+"""
+function chunk_rle(chunks, vec)
+    out = Int[]
+    currentchunk = -1
+    for i in vec
+        nextchunk = findchunk(chunks, i)
+        if nextchunk == currentchunk
+            out[end] += 1
+        else
+            push!(out, 1)
+            currentchunk = nextchunk
+        end
+    end
+    out
+end
+
+"""
+    subsetchunks(r, subs::BitVector)
+
+Identify chunks from indices which may be discontinuous.
+"""
+function subsetchunks(r, subs::BitVector)
+    return subsetchunks(r, findall(subs))
+end
+
 approx_chunksize(r::RegularChunks) = r.cs
 grid_offset(r::RegularChunks) = r.offset
 max_chunksize(r::RegularChunks) = r.cs
@@ -155,7 +185,8 @@ function subsetchunks_fallback(r, subs)
     elseif issorted(subs; rev=true)
         true
     else
-        throw(ArgumentError("Can only subset chunks for sorted indices"))
+        rle = chunk_rle(r, subs)
+        return chunktype_from_chunksizes(rle)
     end
     cs = zeros(Int, length(r))
     for i in subs
@@ -341,8 +372,6 @@ function estimate_chunksize(s, si)
     cs = clamp.(cs, 1, s)
     return GridChunks(s, cs)
 end
-
-
 
 abstract type ChunkTiledDiskArray{T,N} <: AbstractDiskArray{T,N} end
 Base.size(a::ChunkTiledDiskArray) = arraysize_from_chunksize.(eachchunk(a).chunks)

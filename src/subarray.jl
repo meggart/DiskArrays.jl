@@ -25,8 +25,8 @@ end
 eachchunk(a::SubDiskArray) = eachchunk_view(haschunks(a.v.parent), a.v)
 function eachchunk_view(::Chunked, vv)
     pinds = parentindices(vv)
-    if any(ind->!isa(ind,Union{Int,AbstractRange,Colon}),pinds)
-        throw(ArgumentError("Unable to determine chunksize of non-range views."))
+    if any(ind->!isa(ind,Union{Int,AbstractRange,Colon,AbstractVector{<:Integer}}),pinds)
+        throw(ArgumentError("Unable to determine chunksize for view of type $(typeof.(pinds))."))
     end
     iomit = findints(pinds)
     chunksparent = eachchunk(parent(vv))

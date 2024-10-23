@@ -953,3 +953,17 @@ end
     @test getindex_count(A) == 0 
 end
 
+@testset "Map over indices correctly" begin
+    # This is a regression test for issue #144
+    # `map` should always work over the correct indices,
+    # especially since we overload generators to `DiskArrayGenerator`.
+
+    data = [i+j for i in 1:200, j in 1:100]
+    da = AccessCountDiskArray(data, chunksize=(10,10))
+    @test map(identity, da) == data
+    @test all(map(identity, da) .== data)
+
+    # Make sure that type inference works
+    @inferred Matrix{Int} map(identity, da)
+    @inferred Matrix{Float64} map(x -> x * 5.0, da)
+end

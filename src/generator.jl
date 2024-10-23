@@ -64,13 +64,8 @@ function Base.collect_similar(A::AbstractArray, itr::DiskGenerator{<:AbstractArr
     if DiskArrays.haschunks(input) isa DiskArrays.Chunked
         # TODO: change this if DiskArrays ever supports uneven chunks
         chunks = eachchunk(input)
-        value_holder = Matrix{eltype(v1)}(undef, DiskArrays.max_chunksize(chunks)...)
-        output_holder = Matrix{typeof(v1)}(undef, DiskArrays.max_chunksize(chunks)...)
         for chunk_inds in chunks
-            this_chunk_size = map(x -> 1:length(x), chunk_inds)
-            DiskArrays.readblock!(input, value_holder, chunk_inds...)
-            output_holder[this_chunk_size...] .= itr.f.(view(value_holder, this_chunk_size...))
-            dest[chunk_inds...] .= view(output_holder, this_chunk_size...)
+            dest[chunk_inds...] .= itr.f.(input[chunk_inds...])
         end
     else # iterate as normal array
         for I in eachindex(itr.iter)

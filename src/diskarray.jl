@@ -90,6 +90,9 @@ end
         (a.data_indices...,b.data_indices...),
     )
 end
+DiskIndex(output_size::NTuple{N,<:Integer},temparray_size::NTuple{M,<:Integer}, 
+    output_indices::Tuple,temparray_indices::Tuple,data_indices::Tuple) where {N, M} = 
+        DiskIndex(Int.(output_size),Int.(temparray_size),output_indices,temparray_indices,data_indices)
 
 function _resolve_indices(cs, i, indices_pre::DiskIndex, nb::ChunkStrategy)
     inow = first(i)

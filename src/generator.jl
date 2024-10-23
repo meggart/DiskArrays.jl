@@ -47,6 +47,31 @@ function Base.collect(itr::DiskGenerator{<:AbstractArray{<:Any,N}}) where {N}
     return dest
 end
 
+# Warning: this is not public API!
+function Base.collect_similar(A::AbstractArray, itr::DiskGenerator{<:AbstractArray{<:Any,N}}) where {N}
+    y = iterate(itr)
+    shp = axes(itr.iter)
+    if y === nothing
+        et = Base.@default_eltype(itr)
+        return similar(A, et, shp)
+    end
+    v1, st = y
+    dest = similar(A, typeof(v1), shp)
+    i = y
+    for I in eachindex(itr.iter)
+        if i isa Nothing # Mainly to keep JET clean 
+            error(
+                "Should not be reached: iterator is shorter than its `eachindex` iterator"
+            )
+        else
+            dest[I] = first(i)
+            i = iterate(itr, last(i))
+        end
+    end
+    return dest
+
+end
+
 macro implement_generator(t)
     t = esc(t)
     quote

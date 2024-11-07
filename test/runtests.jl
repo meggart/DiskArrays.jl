@@ -909,26 +909,29 @@ end
 end
 
 @testset "Cached arrays" begin
-    M = (1:300) * (1:1200)'
-    A = cat(M, M, M, M; dims=3)
-    ch = ChunkedDiskArray(A, (128, 128, 2))
-    ca = DiskArrays.CachedDiskArray(ch; maxsize=5)
-    # Read the original
-    @test sum(ca) == sum(ca)
-    length(ca.cache)
 
-    ca = DiskArrays.cache(ch; maxsize=5)
-    @test sum(ca) == sum(ca)
+    for mm in (false, true)
+        M = (1:300) * (1:1200)'
+        A = cat(M, M, M, M; dims=3)
+        ch = ChunkedDiskArray(A, (128, 128, 2))
+        ca = DiskArrays.CachedDiskArray(ch; maxsize=5, mmap=mm)
+        # Read the original
+        @test sum(ca) == sum(ca)
+        length(ca.cache)
 
-    @test ca[:, :, 1] == A[:, :, 1]
-    @test ca[:, :, 2] == A[:, :, 2]
-    @test ca[:, :, 2] == A[:, :, 3]
-    @test ca[:, :, 2] == A[:, :, 4]
-    @test ca[:, 1, 1] == ch[:, 1, 1]
-    @test ca[:, 2, 1] == ch[:, 2, 1]
-    @test ca[:, 3, 1] == ch[:, 3, 1]
-    @test ca[:, 200, 1] == ch[:, 200, 1]
-    @test ca[200, :, 1] == ch[200, :, 1]
+        ca = DiskArrays.cache(ch; maxsize=5)
+        @test sum(ca) == sum(ca)
+
+        @test ca[:, :, 1] == A[:, :, 1]
+        @test ca[:, :, 2] == A[:, :, 2]
+        @test ca[:, :, 2] == A[:, :, 3]
+        @test ca[:, :, 2] == A[:, :, 4]
+        @test ca[:, 1, 1] == ch[:, 1, 1]
+        @test ca[:, 2, 1] == ch[:, 2, 1]
+        @test ca[:, 3, 1] == ch[:, 3, 1]
+        @test ca[:, 200, 1] == ch[:, 200, 1]
+        @test ca[200, :, 1] == ch[200, :, 1]
+    end
 end
 
 @testset "Range subset identification" begin

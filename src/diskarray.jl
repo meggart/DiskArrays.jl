@@ -149,7 +149,7 @@ function process_index(i::AbstractArray{<:CartesianIndex{N}}, cs, ::NoBatch) whe
     s = arraysize_from_chunksize.(csnow)
     v = view(CartesianIndices(s), i)
     cindmin, cindmax = if isempty(v)
-       one(CartesianIndex{N}), zero(CartesianIndex{N}) 
+        oneunit(CartesianIndex{N}), zero(CartesianIndex{N}) 
     else
         extrema(v)
     end

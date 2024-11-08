@@ -12,4 +12,4 @@ makedocs(;
     # checkdocs = :exports,
 )
 
-deploydocs(; repo="github.com/meggart/DiskArrays.jl.git")
+deploydocs(; repo="github.com/JuliaIO/DiskArrays.jl.git")

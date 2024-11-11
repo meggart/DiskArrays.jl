@@ -1,10 +1,10 @@
 # DiskArrays.jl
 
 ![Lifecycle](https://img.shields.io/badge/lifecycle-maturing-blue.svg)
-[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://meggart.github.io/DiskArrays.jl/stable)
-[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://meggart.github.io/DiskArrays.jl/dev)
-[![CI](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/meggart/DiskArrays.jl/actions/workflows/ci.yml)
-[![Codecov](https://codecov.io/gh/meggart/DiskArrays.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/meggart/DiskArrays.jl/tree/main)
+[![Stable Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaio.github.io/DiskArrays.jl/stable)
+[![Dev Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaio.github.io/DiskArrays.jl/dev)
+[![CI](https://github.com/JuliaIO/DiskArrays.jl/actions/workflows/ci.yml/badge.svg)](https://github.com/JuliaIO/DiskArrays.jl/actions/workflows/ci.yml)
+[![Codecov](https://codecov.io/gh/JuliaIO/DiskArrays.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaIO/DiskArrays.jl/tree/main)
 
 This package provides a collection of utilities for working with n-dimensional array-like data
 structures that do have considerable overhead for single read operations. 
@@ -199,7 +199,7 @@ the desired range.
 There are arrays that live on disk but which are not split into rectangular chunks, so that the `haschunks` trait returns `Unchunked()`. In order to still enable broadcasting and reductions for these arrays, a chunk size will be estimated in a way that a certain memory limit per chunk is not exceeded. This memory limit defaults to 100MB and can be modified by changing `DiskArrays.default_chunk_size[]`. Then a chunk size is computed based on the element size of the array. However, there are cases where the size of the element type is undefined, e.g. for Strings or variable-length vectors. In these cases one can overload the `DiskArrays.element_size` function for certain container types which returns an approximate element size (in bytes). Otherwise the size of an element will simply be assumed to equal the value stored in `DiskArrays.fallback_element_size` which defaults to 100 bytes. 
 
 
-[ci-img]: https://github.com/meggart/DiskArrays.jl/workflows/CI/badge.svg
-[ci-url]: https://github.com/meggart/DiskArrays.jl/actions?query=workflow%3ACI
-[codecov-img]: http://codecov.io/github/meggart/DiskArrays.jl/coverage.svg?branch=main
-[codecov-url]: (http://codecov.io/github/meggart/DiskArrays.jl?branch=main)
+[ci-img]: https://github.com/JuliaIO/DiskArrays.jl/workflows/CI/badge.svg
+[ci-url]: https://github.com/JuliaIO/DiskArrays.jl/actions?query=workflow%3ACI
+[codecov-img]: http://codecov.io/github/JuliaIO/DiskArrays.jl/coverage.svg?branch=main
+[codecov-url]: (http://codecov.io/github/JuliaIO/DiskArrays.jl?branch=main)

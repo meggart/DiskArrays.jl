@@ -49,7 +49,7 @@ macro implement_diskarray(t)
     end
 end
 
-# https://github.com/meggart/DiskArrays.jl/issues/175
+# https://github.com/JuliaIO/DiskArrays.jl/issues/175
 macro implement_diskarray_skip_zip(t)
     # Need to do this for dispatch ambiguity
     t = esc(t)

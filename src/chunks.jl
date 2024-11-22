@@ -351,7 +351,6 @@ function element_size(a::AbstractArray)
     elseif isbitstype(Base.nonmissingtype(eltype(a)))
         return sizeof(Base.nonmissingtype(eltype(a)))
     else
-        @warn "Can not determine size of element type. Using DiskArrays.fallback_element_size[] = $(fallback_element_size[]) bytes" maxlog=1
         return fallback_element_size[]
     end
 end

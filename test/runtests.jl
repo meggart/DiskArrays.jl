@@ -450,6 +450,19 @@ end
         @test d == 1:26
         @test c == 20:26
     end
+
+    @testset "ConcatDiskArray works for mixed element types" begin
+        da1 = AccessCountDiskArray(collect(Float64,reshape(1:24, 4, 6, 1)))
+        da2 = AccessCountDiskArray(collect(Float32,reshape(1:24, 4, 6, 1)))
+        @test eltype(da1) <: Float64
+        @test eltype(da2) <: Float32
+        c = DiskArrays.ConcatDiskArray([da1, da2])
+
+        @test eltype(c) <: Float64
+        slic = c[:,1,1]
+        @test slic isa Vector{Float64}
+        @test slic == Float64[1, 2, 3, 4, 1, 2, 3, 4]
+    end
 end
 
 @testset "Broadcast with length 1 and 0 final dim" begin

@@ -4,12 +4,16 @@
 
 Joins multiple AbstractArrays or AbstractDiskArrays in lazy concatination.
 """
-struct ConcatDiskArray{T,N,P} <: AbstractDiskArray{T,N}
+struct ConcatDiskArray{T,N,P,C,HC} <: AbstractDiskArray{T,N}
     parents::P
     startinds::NTuple{N,Vector{Int}}
     size::NTuple{N,Int}
+    chunks::C
+    haschunks::HC
 end
-function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{T,N},M}) where {T,N,M}
+function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{<:Any,N},M}) where {N,M}
+    T = mapreduce(eltype,promote_type, init = eltype(first(arrays)),arrays)
+        
     function othersize(x, id)
         return (x[1:(id - 1)]..., x[(id + 1):end]...)
     end
@@ -51,12 +55,13 @@ function ConcatDiskArray(arrays::AbstractArray{<:AbstractArray{T,N},M}) where {T
     startinds = map(first, si)
     sizes = map(last, si)
 
-    return ConcatDiskArray{T,D,typeof(arrays1)}(arrays1, startinds, sizes)
+    chunks = concat_chunksize(D, arrays1)
+    hc = haschunks(first(arrays1))
+
+    return ConcatDiskArray{T,D,typeof(arrays1),typeof(chunks),typeof(hc)}(arrays1, startinds, sizes, chunks, hc)
 end
 function ConcatDiskArray(arrays::AbstractArray)
     # Validate array eltype and dimensionality
-    all(a -> eltype(a) == eltype(first(arrays)), arrays) ||
-        error("Arrays don't have the same element type")
     all(a -> ndims(a) == ndims(first(arrays)), arrays) ||
         error("Arrays don't have the same dimensions")
     return error("Should not be reached")
@@ -98,11 +103,10 @@ function _concat_diskarray_block_io(f, a::ConcatDiskArray, inds...)
     end
 end
 
-haschunks(::ConcatDiskArray) = Chunked()
+haschunks(c::ConcatDiskArray) = c.haschunks
 
-function eachchunk(aconc::ConcatDiskArray{T,N}) where {T,N}
-    s = size(aconc)
-    oldchunks = map(eachchunk, aconc.parents)
+function concat_chunksize(N, parents)
+    oldchunks = map(eachchunk, parents)
     newchunks = ntuple(N) do i
         sliceinds = Base.setindex(ntuple(_ -> 1, N), :, i)
         v = map(c -> c.chunks[i], oldchunks[sliceinds...])
@@ -111,6 +115,10 @@ function eachchunk(aconc::ConcatDiskArray{T,N}) where {T,N}
     end
 
     return GridChunks(newchunks...)
+end
+
+function eachchunk(aconc::ConcatDiskArray{T,N}) where {T,N}
+    aconc.chunks
 end
 
 function mergechunks(a::RegularChunks, b::RegularChunks)

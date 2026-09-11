@@ -14,10 +14,12 @@ using Base: tail
     read(path, String)
 end DiskArrays
 
-export AbstractDiskArray, eachchunk, ChunkIndex, ChunkIndices
+export AbstractDiskArray, eachchunk, ChunkIndex, ChunkIndices, backend,
+    diskarrays_sum_impl, diskarrays_mapreduce_impl, diskarrays_mapreducedim_impl
 
 include("scalar.jl")
 include("chunks.jl")
+include("compute.jl")
 include("diskarray.jl")
 include("batchgetindex.jl")
 include("diskindex.jl")
@@ -48,7 +50,6 @@ macro implement_diskarray(t)
         @implement_setindex $t
         @implement_broadcast $t
         @implement_iteration $t
-        @implement_mapreduce $t
         @implement_reshape $t
         @implement_array_methods $t
         @implement_permutedims $t
@@ -69,7 +70,6 @@ macro implement_diskarray_skip_zip(t)
         @implement_setindex $t
         @implement_broadcast $t
         @implement_iteration $t
-        @implement_mapreduce $t
         @implement_reshape $t
         @implement_array_methods $t
         @implement_permutedims $t

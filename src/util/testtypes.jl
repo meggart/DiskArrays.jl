@@ -2,8 +2,8 @@ module TestTypes
 
 import ..DiskArrays
 
-export AccessCountDiskArray, ChunkedDiskArray, UnchunkedDiskArray, getindex_count, setindex_count, trueparent,
-    getindex_log, setindex_log
+export AccessCountDiskArray, ChunkedDiskArray, TestBackend, UnchunkedDiskArray, getindex_count,
+    reset_test_backend, setindex_count, trueparent, getindex_log, setindex_log
 
 """
     AccessCountDiskArray(A; chunksize)
@@ -108,6 +108,25 @@ function DiskArrays.readblock!(a::UnchunkedDiskArray, aout, i::AbstractUnitRange
     ndims(a) == length(i) || error("Number of indices is not correct")
     all(r -> isa(r, AbstractUnitRange), i) || error("Not all indices are unit ranges")
     return aout .= parent(a)[i...]
+end
+
+"""
+    TestBackend
+
+A `ComputeBackend` subtype for testing that backend dispatch works correctly.
+Wraps the default implementation while counting how many times it is invoked.
+"""
+struct TestBackend <: DiskArrays.ComputeBackend
+    call_count::Threads.Atomic{Int}
+end
+
+TestBackend() = TestBackend(Threads.Atomic{Int}(0))
+
+reset_test_backend(tb::TestBackend) = (tb.call_count[]=0; tb)
+
+function DiskArrays.diskarrays_sum_impl(f, a::DiskArrays.AbstractDiskArray, tb::TestBackend)
+    Threads.atomic_add!(tb.call_count, 1)
+    DiskArrays._diskarrays_sum_default(f, a)
 end
 
 end

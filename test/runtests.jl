@@ -22,34 +22,6 @@ include("backend_tests.jl")
     Aqua.test_deps_compat(DiskArrays)
 end
 
-@testset "Backend dispatch" begin
-    if DiskArrays.backend == "dynamic"
-        tb = TestBackend()
-        @test tb isa DiskArrays.ComputeBackend
-        @test tb.call_count[] == 0
-
-        # Inject the test backend into the DynamicBackend
-        DiskArrays.compute_backend.current_backend = tb
-
-        a = AccessCountDiskArray([1.0, 2.0, 3.0, 4.0, 5.0], chunksize=(2,))
-
-        result = sum(a)
-        @test result == 15.0
-        @test tb.call_count[] >= 1
-
-        # Reset and test with function argument
-        reset_test_backend(tb)
-        result = sum(x -> 2x, a)
-        @test result == 30.0
-        @test tb.call_count[] >= 1
-
-        # Restore default backend
-        DiskArrays.compute_backend.current_backend = DiskArrays.DefaultBackend()
-    else
-        @test_skip "Backend dispatch tests require backend preference set to \"dynamic\""
-    end
-end
-
 @testset "allowscalar" begin
     DiskArrays.allowscalar(false)
     @test DiskArrays.canscalar() == false

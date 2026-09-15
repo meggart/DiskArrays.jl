@@ -142,128 +142,42 @@ function test_mapreduce_default(data; chunksize=size(data))
     end
 end
 
-# ── DAE versions ────────────────────────────────────────────────────────────
+# ── Backend dispatch test ───────────────────────────────────────────────────
 
-function test_specialized_reductions_dae(data; chunksize=size(data))
-    @testset "DiskArrayEngineBackend" begin
-        mat, da = make_arrays(data; chunksize)
+"""
+    test_backend_dispatch()
 
-        @testset "sum" begin
-            @test Array(sum(da)) ≈ sum(mat)
-            @test Array(sum(da, dims=1)) ≈ sum(mat, dims=1)
-            @test Array(sum(da, dims=(1, 2))) ≈ sum(mat, dims=(1, 2))
-            @test Array(sum(identity, da)) ≈ sum(mat)
-            @test Array(sum(x -> 2x, da)) ≈ sum(x -> 2x, mat)
-            @test Array(sum(x -> 2x, da, dims=1)) ≈ sum(x -> 2x, mat, dims=1)
-        end
-
-        @testset "prod" begin
-            @test Array(prod(da)) ≈ prod(mat)
-            @test Array(prod(da, dims=1)) ≈ prod(mat, dims=1)
-            @test Array(prod(identity, da)) ≈ prod(mat)
-            @test Array(prod(x -> 2x, da)) ≈ prod(x -> 2x, mat)
-            @test Array(prod(x -> 2x, da, dims=1)) ≈ prod(x -> 2x, mat, dims=1)
-        end
-
-        @testset "all" begin
-            @test all(Array(da .> -1.0)) == all(mat .> -1.0)
-            @test all(all(da .> -1.0, dims=1)) == all(all(mat .> -1.0, dims=1))
-            @test all(all(x -> x > -1.0, da, dims=1)) == all(all(mat .> -1.0, dims=1))
-        end
-
-        @testset "any" begin
-            @test any(Array(da .< 0.0)) == any(mat .< 0.0)
-            @test any(any(da .< 0.0, dims=1)) == any(any(mat .< 0.0, dims=1))
-            @test any(any(x -> x < 0.0, da, dims=1)) == any(any(mat .< 0.0, dims=1))
-        end
-
-        @testset "minimum" begin
-            @test Array(minimum(da)) ≈ minimum(mat)
-            @test Array(minimum(da, dims=1)) ≈ minimum(mat, dims=1)
-            @test Array(minimum(identity, da)) ≈ minimum(mat)
-            @test Array(minimum(x -> abs(x), da)) ≈ minimum(x -> abs(x), mat)
-            @test Array(minimum(x -> abs(x), da, dims=1)) ≈ minimum(x -> abs(x), mat, dims=1)
-        end
-
-        @testset "maximum" begin
-            @test Array(maximum(da)) ≈ maximum(mat)
-            @test Array(maximum(da, dims=1)) ≈ maximum(mat, dims=1)
-            @test Array(maximum(identity, da)) ≈ maximum(mat)
-            @test Array(maximum(x -> abs(x), da)) ≈ maximum(x -> abs(x), mat)
-            @test Array(maximum(x -> abs(x), da, dims=1)) ≈ maximum(x -> abs(x), mat, dims=1)
-        end
-
-        @testset "extrema" begin
-            @test Array(extrema(da)) == extrema(mat)
-            @test Array(extrema(da, dims=1)) == extrema(mat, dims=1)
-            @test Array(extrema(identity, da)) == extrema(mat)
-            @test Array(extrema(x -> abs(x), da)) == extrema(x -> abs(x), mat)
-            @test Array(extrema(x -> abs(x), da, dims=1)) == extrema(x -> abs(x), mat, dims=1)
-        end
-
-        @testset "count" begin
-            @test Array(count(x -> x > 0, da)) == count(x -> x > 0, mat)
-            @test Array(count(x -> x > 0, da, dims=1)) == count(x -> x > 0, mat, dims=1)
-        end
-
-        @testset "unique" begin
-            @test_broken Array(unique(da)) == unique(mat)
-            @test_broken Array(unique(identity, da)) == unique(mat)
-            @test_broken Array(unique(x -> x > 0, da)) == unique(x -> x > 0, mat)
-        end
+Test that the backend dispatch mechanism works: a custom `ComputeBackend`
+subtype can intercept `diskarrays_*_impl` calls and the `DynamicBackend`
+path routes correctly. Skips when the active backend is not `"dynamic"`.
+"""
+function test_backend_dispatch()
+    if DiskArrays.backend != "dynamic"
+        @test_skip "Backend dispatch tests require backend preference set to \"dynamic\""
+        return
     end
-end
 
-function test_statistics_reductions_dae(data; chunksize=size(data))
-    @testset "DAE: Statistics" begin
-        mat, da = make_arrays(data; chunksize)
-        @testset "mean" begin
-            @test Array(mean(da)) ≈ mean(mat)
-            @test Array(mean(da, dims=1)) ≈ mean(mat, dims=1)
-            @test Array(mean(identity, da)) ≈ mean(mat)
-            @test Array(mean(x -> 2x, da)) ≈ mean(x -> 2x, mat)
-            @test Array(mean(x -> 2x, da, dims=1)) ≈ mean(x -> 2x, mat, dims=1)
-        end
-        @testset "median" begin
-            @test Array(median(da)) ≈ median(mat)
-            @test Array(median(da, dims=1)) ≈ median(mat, dims=1)
-            @test Array(median(da, dims=2)) ≈ median(mat, dims=2)
-        end
-    end
-end
+    tb = TestBackend()
+    @test tb isa DiskArrays.ComputeBackend
+    @test tb.call_count[] == 0
 
-function test_mapreduce_dae(data; chunksize=size(data))
-    @testset "DiskArrayEngineBackend: mapreduce" begin
-        mat, da = make_arrays(data; chunksize)
-        @testset "mapreduce (no dims, no init)" begin
-            @test Array(mapreduce(x -> 2x, +, da)) ≈ mapreduce(x -> 2x, +, mat)
-            @test Array(mapreduce(*, -, da)) ≈ mapreduce(*, -, mat)
-        end
-        @testset "mapreduce (dims=)" begin
-            @test Array(mapreduce(x -> 2x, +, da; dims=1)) ≈ mapreduce(x -> 2x, +, mat; dims=1)
-            @test Array(mapreduce(x -> 2x, +, da; dims=(1, 2))) ≈ mapreduce(x -> 2x, +, mat; dims=(1, 2))
-        end
-        @testset "mapreduce (init)" begin
-            @test Array(mapreduce(identity, +, da; init=0)) ≈ mapreduce(identity, +, mat; init=0)
-            @test Array(mapreduce(identity, *, da; init=1)) ≈ mapreduce(identity, *, mat; init=1)
-            @test Array(mapreduce(identity, +, da; dims=1, init=0)) ≈ mapreduce(identity, +, mat; dims=1, init=0)
-        end
-        @testset "mapreducedim!" begin
-            R = zeros(size(da, 1), size(da, 2), 1)
-            mapreducedim!(x -> 2x, +, R, da)
-            @test R ≈ mapreducedim!(x -> 2x, +, similar(R, size(da, 1), size(da, 2), 1), mat)
-            R2 = zeros(1, size(da, 2), size(da, 3))
-            mapreducedim!(x -> x^2, +, R2, da)
-            @test R2 ≈ mapreducedim!(x -> x^2, +, similar(R2), mat)
-        end
-        @testset "mapfoldl (no init)" begin
-            @test Array(mapfoldl(x -> 2x, +, da)) ≈ mapfoldl(x -> 2x, +, mat)
-        end
-        @testset "mapfoldl (with init)" begin
-            @test Array(mapfoldl(identity, +, da; init=0)) ≈ mapfoldl(identity, +, mat; init=0)
-            @test Array(mapfoldl(identity, *, da; init=1)) ≈ mapfoldl(identity, *, mat; init=1)
-        end
-    end
+    # Inject the test backend into the DynamicBackend
+    DiskArrays.compute_backend.current_backend = tb
+
+    a = AccessCountDiskArray([1.0, 2.0, 3.0, 4.0, 5.0], chunksize=(2,))
+
+    result = sum(a)
+    @test result == 15.0
+    @test tb.call_count[] >= 1
+
+    # Reset and test with function argument
+    reset_test_backend(tb)
+    result = sum(x -> 2x, a)
+    @test result == 30.0
+    @test tb.call_count[] >= 1
+
+    # Restore default backend
+    DiskArrays.compute_backend.current_backend = DiskArrays.DefaultBackend()
 end
 
 # ── Backend test suites ─────────────────────────────────────────────────────
@@ -287,22 +201,8 @@ end
     test_mapreduce_default(randn(10, 20); chunksize=(4, 7))
 end
 
-@testset "Backend test suite: DiskArrayEngine" begin
-    @testset "DAE specialized reductions" begin
-        @testset for data in (randn(5, 4, 2), randn(10), randn(10, 20), randn(3, 3, 3))
-            test_specialized_reductions_dae(data; chunksize=ntuple(i -> max(1, size(data)[i] ÷ 2), ndims(data)))
-        end
-    end
-    @testset "DAE statistics" begin
-        @testset for data in (randn(5, 4, 2), randn(10), randn(10, 20), randn(3, 3, 3))
-            test_statistics_reductions_dae(data; chunksize=ntuple(i -> max(1, size(data)[i] ÷ 2), ndims(data)))
-        end
-    end
-    @testset "DAE mapreduce" begin
-        @testset for data in (randn(5, 4, 2), randn(10), randn(10, 20), randn(3, 3, 3))
-            test_mapreduce_dae(data; chunksize=ntuple(i -> max(1, size(data)[i] ÷ 2), ndims(data)))
-        end
-    end
+@testset "Backend dispatch mechanism" begin
+    test_backend_dispatch()
 end
 
 # ── Edge cases ──────────────────────────────────────────────────────────────

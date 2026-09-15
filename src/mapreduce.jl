@@ -83,7 +83,7 @@ for fname in (:sum, :prod, :all, :any, :minimum, :maximum)
         end
         Base.$fname(a::AbstractDiskArray; kwargs...) = Base.$fname(identity, a; kwargs...)
 
-        $(fnameimpl)(f, a::AbstractDiskArray, ::DefaultBackend; dims=:) =
+        $(fnameimpl)(f, a::AbstractDiskArray, ::ComputeBackend; dims=:) =
             $(fnamedef)(f, a; dims)
 
         function $(fnamedef)(f, a::AbstractDiskArray; dims=:)

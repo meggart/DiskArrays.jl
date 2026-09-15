@@ -11,6 +11,8 @@ using TraceFuns, Suppressor
 # using JET
 # JET.report_package(DiskArrays)
 
+include("backend_tests.jl")
+
 @testset "Aqua.jl" begin
     Aqua.test_ambiguities([DiskArrays, Base, Core])
     Aqua.test_unbound_args(DiskArrays)

@@ -150,33 +150,36 @@ repsingle(size, range) = size == 1 ? (1:1) : range
 
 # Implementation macro
 
+function diskarrays_coptyo!(dest, bc, ::ComputeBackend)
+    foreach(eachchunk(dest)) do c
+        ar = [bc[i] for i in CartesianIndices(to_ranges(c))]
+        dest[to_ranges(c)...] = ar
+    end
+    return dest
+end
+# This is a heavily allocating implementation, but working for all cases.
+# As performance optimization one might:
+# Allocate the array only once if all chunks have the same size
+# Use FillArrays, if the DiskArray accepts these
+function diskarrays_fill!(dest, value, ::ComputeBackend)
+    foreach(eachchunk(dest)) do c
+        ar = fill(value, length.(to_ranges(c)))
+        dest[to_ranges(c)...] = ar
+    end
+    return dest
+end
+diskarrays_broadcaststyle(T, ::ComputeBackend) = ChunkStyle{ndims(T)}()
+
 macro implement_broadcast(t)
     t = esc(t)
     quote
         # Broadcasting with a DiskArray on LHS
-        function Base.copyto!(dest::$t, bc::Broadcasted{Nothing})
-            foreach(eachchunk(dest)) do c
-                ar = [bc[i] for i in CartesianIndices(to_ranges(c))]
-                dest[to_ranges(c)...] = ar
-            end
-            return dest
-        end
-        Base.BroadcastStyle(T::Type{<:$t}) = ChunkStyle{ndims(T)}()
+        Base.copyto!(dest::$t, bc::Broadcasted{Nothing}) = diskarrays_coptyo!(dest, bc, get_backend(compute_backend))
+        Base.BroadcastStyle(T::Type{<:$t}) = diskarrays_broadcaststyle(T, get_backend(compute_backend))
         function DiskArrays.subsetarg(arg::$t, ranges)
             ashort = maybeonerange(size(arg), ranges)
             return arg[ashort...]
         end
-
-        # This is a heavily allocating implementation, but working for all cases.
-        # As performance optimization one might:
-        # Allocate the array only once if all chunks have the same size
-        # Use FillArrays, if the DiskArray accepts these
-        function Base.fill!(dest::$t, value)
-            foreach(eachchunk(dest)) do c
-                ar = fill(value, length.(to_ranges(c)))
-                dest[to_ranges(c)...] = ar
-            end
-            return dest
-        end
+        Base.fill!(dest::$t, value) = diskarrays_fill!(dest, value, get_backend(compute_backend))
     end
 end
